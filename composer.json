@@ -1,0 +1,80 @@
+{
+  "name": "membercore/cli",
+  "description": "Extended WP-CLI commands for MemberCore management including membership assignment, user management, and more.",
+  "type": "wordpress-plugin",
+  "license": "GPL-2.0-or-later",
+  "authors": [
+    {
+      "name": "MemberCore",
+      "email": "support@membercore.com",
+      "homepage": "https://membercore.com/"
+    }
+  ],
+  "keywords": [
+    "wordpress",
+    "wp-cli",
+    "membercore",
+    "membership",
+    "cli",
+    "command-line"
+  ],
+  "homepage": "https://membercore.com/",
+  "support": {
+    "issues": "https://membercore.com/support/",
+    "docs": "https://membercore.com/docs/"
+  },
+  "require": {
+    "php": ">=7.4",
+    "fakerphp/faker": "^1.20",
+    "tightenco/collect": "^8.83"
+  },
+  "require-dev": {
+    "squizlabs/php_codesniffer": "^3.7",
+    "dealerdirect/phpcodesniffer-composer-installer": "*",
+    "phpcompatibility/phpcompatibility-wp": "^2",
+    "wp-coding-standards/wpcs": "*",
+    "automattic/vipwpcs": "^2.3"
+  },
+  "autoload": {
+    "psr-4": {
+      "membercore\\cli\\": "app/",
+      "membercore\\cli\\commands\\": "app/commands/",
+      "membercore\\cli\\helpers\\": "app/helpers/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "membercore\\cli\\tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "compat": "@php ./vendor/squizlabs/php_codesniffer/bin/phpcs --standard=phpcompat.xml --report=summary,source",
+    "format": "@php ./vendor/squizlabs/php_codesniffer/bin/phpcbf . --extensions=php --report=summary,source",
+    "lint": "@php ./vendor/squizlabs/php_codesniffer/bin/phpcs --report=summary,source",
+    "lint:errors": "@lint -n",
+    "test": [
+      "Composer\\Config::disableProcessTimeout",
+      "@php ./vendor/phpunit/phpunit/phpunit"
+    ],
+    "install-dev": [
+      "composer install --dev"
+    ],
+    "check-all": [
+      "@lint",
+      "@compat",
+      "@test"
+    ]
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    },
+    "sort-packages": true,
+    "optimize-autoloader": true
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "extra": {
+    "wordpress-install-dir": "wp-content/plugins/membercore-cli"
+  }
+}

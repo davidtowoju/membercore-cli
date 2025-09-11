@@ -1,0 +1,437 @@
+[
+  {
+    "program_title": "Travel Adventure Experience",
+    "milestones": [
+      {
+        "title": "Planning Your Adventure",
+        "due_length": 1,
+        "due_unit": "week",
+        "timing": "after_program_starts"
+      },
+      {
+        "title": "Exploring New Cultures",
+        "due_length": 2,
+        "due_unit": "weeks",
+        "timing": "after_previous_milestone"
+      },
+      {
+        "title": "Adventure Challenges",
+        "due_length": 3,
+        "due_unit": "weeks",
+        "timing": "after_previous_milestone"
+      },
+      {
+        "title": "Capturing Memories",
+        "due_length": 1,
+        "due_unit": "week",
+        "timing": "after_previous_milestone"
+      }
+    ],
+    "habits": [
+      {
+        "title": "Daily Journaling",
+        "repeat_length": 1,
+        "repeat_interval": "daily",
+        "repeat_days": "1,2,3,4,5,6,7",
+        "timing": "after_program_starts"
+      },
+      {
+        "title": "Local Cuisine Tasting",
+        "repeat_length": 1,
+        "repeat_interval": "weekly",
+        "repeat_days": "6",
+        "timing": "after_program_starts"
+      }
+    ],
+    "groups": [
+      {
+        "title": "Adventure Group",
+        "type": "dynamic",
+        "coach_id": 1,
+        "allow_enrollment_cap": true,
+        "enrollment_cap": 50,
+        "status": "open"
+      },
+      {
+        "title": "Explorer Group",
+        "type": "fixed",
+        "coach_id": 2,
+        "allow_enrollment_cap": false,
+        "enrollment_cap": null,
+        "start_date": "2023-11-01",
+        "end_date": "2024-01-31",
+        "status": "closed"
+      }
+    ]
+  },
+  {
+    "program_title": "Financial Freedom Blueprint",
+    "milestones": [
+      {
+        "title": "Setting Financial Goals",
+        "due_length": 1,
+        "due_unit": "week",
+        "timing": "after_program_starts"
+      },
+      {
+        "title": "Budgeting and Saving",
+        "due_length": 2,
+        "due_unit": "weeks",
+        "timing": "after_previous_milestone"
+      },
+      {
+        "title": "Investment Strategies",
+        "due_length": 3,
+        "due_unit": "weeks",
+        "timing": "after_previous_milestone"
+      }
+    ],
+    "habits": [
+      {
+        "title": "Daily Expense Tracking",
+        "repeat_length": 1,
+        "repeat_interval": "daily",
+        "repeat_days": "1,2,3,4,5,6,7",
+        "timing": "after_program_starts"
+      },
+      {
+        "title": "Weekly Savings Deposit",
+        "repeat_length": 1,
+        "repeat_interval": "weekly",
+        "repeat_days": "6",
+        "timing": "after_program_starts"
+      }
+    ],
+    "groups": [
+      {
+        "title": "Budgeting Group",
+        "type": "dynamic",
+        "coach_id": 1,
+        "allow_enrollment_cap": true,
+        "enrollment_cap": 50,
+        "status": "open"
+      },
+      {
+        "title": "Investment Group",
+        "type": "fixed",
+        "coach_id": 2,
+        "allow_enrollment_cap": false,
+        "enrollment_cap": null,
+        "start_date": "2023-11-01",
+        "end_date": "2024-01-31",
+        "status": "closed"
+      }
+    ]
+  },
+  {
+    "program_title": "Fitness 101",
+    "milestones": [
+      {
+        "title": "Introduction to Fitness",
+        "due_length": 1,
+        "due_unit": "week",
+        "timing": "after_program_starts"
+      },
+      {
+        "title": "Cardio and Endurance",
+        "due_length": 2,
+        "due_unit": "weeks",
+        "timing": "after_previous_milestone"
+      },
+      {
+        "title": "Strength Training",
+        "due_length": 3,
+        "due_unit": "weeks",
+        "timing": "after_previous_milestone"
+      }
+    ],
+    "habits": [
+      {
+        "title": "Daily Morning Run",
+        "repeat_length": 1,
+        "repeat_interval": "daily",
+        "repeat_days": "1,2,3,4,5,6,7",
+        "timing": "after_program_starts"
+      },
+      {
+        "title": "Weekly Weightlifting",
+        "repeat_length": 1,
+        "repeat_interval": "weekly",
+        "repeat_days": "6",
+        "timing": "after_program_starts"
+      }
+    ],
+    "groups": [
+      {
+        "title": "Cardio Group",
+        "type": "dynamic",
+        "coach_id": 1,
+        "allow_enrollment_cap": true,
+        "enrollment_cap": 50,
+        "status": "open"
+      },
+      {
+        "title": "Strength Group",
+        "type": "fixed",
+        "coach_id": 2,
+        "allow_enrollment_cap": false,
+        "enrollment_cap": null,
+        "start_date": "2023-11-01",
+        "end_date": "2024-01-31",
+        "status": "closed"
+      }
+    ]
+  },
+  {
+    "program_title": "Starting a Business",
+    "milestones": [
+      {
+        "title": "Business Idea Generation",
+        "due_length": 1,
+        "due_unit": "week",
+        "timing": "after_program_starts"
+      },
+      {
+        "title": "Market Research and Analysis",
+        "due_length": 2,
+        "due_unit": "weeks",
+        "timing": "after_previous_milestone"
+      },
+      {
+        "title": "Business Plan Development",
+        "due_length": 3,
+        "due_unit": "weeks",
+        "timing": "after_previous_milestone"
+      }
+    ],
+    "habits": [
+      {
+        "title": "Daily Business Learning",
+        "repeat_length": 1,
+        "repeat_interval": "daily",
+        "repeat_days": "1,2,3,4,5,6,7",
+        "timing": "after_program_starts"
+      },
+      {
+        "title": "Weekly Networking Event",
+        "repeat_length": 1,
+        "repeat_interval": "weekly",
+        "repeat_days": "6",
+        "timing": "after_program_starts"
+      }
+    ],
+    "groups": [
+      {
+        "title": "Startup Enthusiasts",
+        "type": "dynamic",
+        "coach_id": 1,
+        "allow_enrollment_cap": true,
+        "enrollment_cap": 50,
+        "status": "open"
+      },
+      {
+        "title": "Business Visionaries",
+        "type": "fixed",
+        "coach_id": 2,
+        "allow_enrollment_cap": false,
+        "enrollment_cap": null,
+        "start_date": "2023-11-01",
+        "end_date": "2024-01-31",
+        "status": "closed"
+      }
+    ]
+  },
+  {
+    "program_title": "Relationship and Communication Skills",
+    "milestones": [
+      {
+        "title": "Understanding Communication Styles",
+        "due_length": 1,
+        "due_unit": "week",
+        "timing": "after_program_starts"
+      },
+      {
+        "title": "Conflict Resolution Techniques",
+        "due_length": 2,
+        "due_unit": "weeks",
+        "timing": "after_previous_milestone"
+      },
+      {
+        "title": "Empathy and Active Listening",
+        "due_length": 3,
+        "due_unit": "weeks",
+        "timing": "after_previous_milestone"
+      },
+      {
+        "title": "Building Healthy Relationships",
+        "due_length": 1,
+        "due_unit": "week",
+        "timing": "after_previous_milestone"
+      }
+    ],
+    "habits": [
+      {
+        "title": "Daily Reflective Journaling",
+        "repeat_length": 1,
+        "repeat_interval": "daily",
+        "repeat_days": "1,2,3,4,5,6,7",
+        "timing": "after_program_starts"
+      },
+      {
+        "title": "Weekly Communication Challenge",
+        "repeat_length": 1,
+        "repeat_interval": "weekly",
+        "repeat_days": "7",
+        "timing": "after_program_starts"
+      }
+    ],
+    "groups": [
+      {
+        "title": "Effective Communication Group",
+        "type": "dynamic",
+        "coach_id": 1,
+        "allow_enrollment_cap": true,
+        "enrollment_cap": 50,
+        "status": "open"
+      },
+      {
+        "title": "Relationship Builders",
+        "type": "fixed",
+        "coach_id": 2,
+        "allow_enrollment_cap": false,
+        "enrollment_cap": null,
+        "start_date": "2023-11-01",
+        "end_date": "2024-01-31",
+        "status": "closed"
+      }
+    ]
+  },
+  {
+    "program_title": "Public Speaking and Presentation Skills",
+    "milestones": [
+      {
+        "title": "Overcoming Public Speaking Anxiety",
+        "due_length": 1,
+        "due_unit": "week",
+        "timing": "after_program_starts"
+      },
+      {
+        "title": "Structuring Engaging Presentations",
+        "due_length": 2,
+        "due_unit": "weeks",
+        "timing": "after_previous_milestone"
+      },
+      {
+        "title": "Effective Verbal Communication",
+        "due_length": 3,
+        "due_unit": "weeks",
+        "timing": "after_previous_milestone"
+      },
+      {
+        "title": "Engaging the Audience",
+        "due_length": 1,
+        "due_unit": "week",
+        "timing": "after_previous_milestone"
+      }
+    ],
+    "habits": [
+      {
+        "title": "Daily Vocal Warm-ups",
+        "repeat_length": 1,
+        "repeat_interval": "daily",
+        "repeat_days": "1,2,3,4,5,6,7",
+        "timing": "after_program_starts"
+      },
+      {
+        "title": "Weekly Presentation Practice",
+        "repeat_length": 1,
+        "repeat_interval": "weekly",
+        "repeat_days": "7",
+        "timing": "after_program_starts"
+      }
+    ],
+    "groups": [
+      {
+        "title": "Confident Speakers",
+        "type": "dynamic",
+        "coach_id": 1,
+        "allow_enrollment_cap": true,
+        "enrollment_cap": 50,
+        "status": "open"
+      },
+      {
+        "title": "Professional Presenters",
+        "type": "fixed",
+        "coach_id": 2,
+        "allow_enrollment_cap": false,
+        "enrollment_cap": null,
+        "start_date": "2023-11-01",
+        "end_date": "2024-01-31",
+        "status": "closed"
+      }
+    ]
+  },
+  {
+    "program_title": "Creativity and Innovation",
+    "milestones": [
+      {
+        "title": "Understanding Creative Thinking",
+        "due_length": 1,
+        "due_unit": "week",
+        "timing": "after_program_starts"
+      },
+      {
+        "title": "Exploring Innovative Solutions",
+        "due_length": 2,
+        "due_unit": "weeks",
+        "timing": "after_previous_milestone"
+      },
+      {
+        "title": "Implementing Creative Ideas",
+        "due_length": 3,
+        "due_unit": "weeks",
+        "timing": "after_previous_milestone"
+      },
+      {
+        "title": "Fostering a Creative Culture",
+        "due_length": 1,
+        "due_unit": "week",
+        "timing": "after_previous_milestone"
+      }
+    ],
+    "habits": [
+      {
+        "title": "Daily Idea Generation",
+        "repeat_length": 1,
+        "repeat_interval": "daily",
+        "repeat_days": "1,2,3,4,5,6,7",
+        "timing": "after_program_starts"
+      },
+      {
+        "title": "Weekly Innovation Challenge",
+        "repeat_length": 1,
+        "repeat_interval": "weekly",
+        "repeat_days": "5",
+        "timing": "after_program_starts"
+      }
+    ],
+    "groups": [
+      {
+        "title": "Innovation Enthusiasts",
+        "type": "dynamic",
+        "coach_id": 1,
+        "allow_enrollment_cap": true,
+        "enrollment_cap": 30,
+        "status": "open"
+      },
+      {
+        "title": "Creative Thinkers",
+        "type": "dynamic",
+        "coach_id": 2,
+        "allow_enrollment_cap": true,
+        "enrollment_cap": 25,
+        "status": "open"
+      }
+    ]
+  }
+]
