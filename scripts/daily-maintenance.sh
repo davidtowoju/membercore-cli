@@ -89,14 +89,34 @@ run_user_cleanup() {
     
     log "Starting: $description"
     
+    # Check if WP-CLI is working
+    if ! wp --version &>/dev/null; then
+        log_error "WP-CLI not found or not working"
+        return 1
+    fi
+    
+    # Check if WordPress is accessible
+    if ! wp --path="$WORDPRESS_PATH" core version &>/dev/null; then
+        log_error "WordPress not accessible at path: $WORDPRESS_PATH"
+        return 1
+    fi
+    
     # Get list of users to delete (exclude admin user ID 1)
     local users_to_delete
-    users_to_delete=$(wp --path="$WORDPRESS_PATH" user list --field=ID --exclude=1 2>/dev/null)
+    users_to_delete=$(wp --path="$WORDPRESS_PATH" user list --field=ID --exclude=1 2>&1)
+    local wp_exit_code=$?
     
     # Debug logging
-    local total_users=$(wp --path="$WORDPRESS_PATH" user list --format=count 2>/dev/null)
-    log "Debug: Total users found: $total_users"
+    local total_users=$(wp --path="$WORDPRESS_PATH" user list --format=count 2>&1)
+    log "Debug: Total users found: '$total_users'"
     log "Debug: Users to delete: '$users_to_delete'"
+    log "Debug: WP-CLI exit code: $wp_exit_code"
+    
+    # Check if WP-CLI command failed
+    if [ $wp_exit_code -ne 0 ]; then
+        log_error "WP-CLI user list failed: $users_to_delete"
+        return 1
+    fi
     
     if [ -z "$users_to_delete" ]; then
         log "No users to delete (only admin user exists)"
@@ -159,6 +179,28 @@ log "Starting MemberCore Daily Maintenance"
 log "Site: directories.today"
 log "Mode: $([ "$DRY_RUN" = true ] && echo 'DRY RUN' || echo 'LIVE')"
 log "========================================="
+
+# Debug: Check WordPress installation
+if [ ! -f "$WORDPRESS_PATH/wp-config.php" ]; then
+    log_error "WordPress not found at $WORDPRESS_PATH"
+    log "Looking for wp-config.php in /home/pluginette-bolbf..."
+    find /home/pluginette-bolbf -name "wp-config.php" -type f 2>/dev/null | head -3 | while read path; do
+        log "Found WordPress at: $(dirname "$path")"
+    done
+    exit 1
+fi
+
+# Check WP-CLI
+if ! wp --version &>/dev/null; then
+    log_error "WP-CLI not found. Checking PATH..."
+    log "Current PATH: $PATH"
+    log "Looking for wp command..."
+    which wp || log "wp command not found"
+    exit 1
+fi
+
+log "WordPress path: $WORDPRESS_PATH"
+log "WP-CLI version: $(wp --version 2>/dev/null || echo 'Not found')"
 
 # Initialize counters
 TOTAL_COMMANDS=1  # Update this number when adding commands
