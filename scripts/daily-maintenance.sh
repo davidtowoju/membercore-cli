@@ -218,6 +218,43 @@ run_post_cleanup() {
     fi
 }
 
+run_option_cleanup() {
+    local description="$1"
+    local critical="${2:-false}"
+    local options="mcpd_community_profile_type_added mcpd_social_profile_emails_added mcpd_community_directory_added meco_options"
+    
+    log "Starting: $description"
+    
+    # Check if WP-CLI is working
+    if ! wp --version &>/dev/null; then
+        log_error "WP-CLI not found or not working"
+        return 1
+    fi
+    
+    if [ "$DRY_RUN" = true ]; then
+        log "DRY RUN MODE: Would delete options:"
+        for option in $options; do
+            log "  - Would delete option: $option"
+        done
+        return 0
+    fi
+    
+    # Delete each option
+    local deleted_count=0
+    for option in $options; do
+        log "Deleting option: $option"
+        if wp --path="$WORDPRESS_PATH" option delete $option $QUIET_FLAG 2>/dev/null; then
+            log "✓ Deleted option: $option"
+            ((deleted_count++))
+        else
+            log "⚠️  Option not found or already deleted: $option"
+        fi
+    done
+    
+    log "✓ Completed: $description - Processed $deleted_count options"
+    return 0
+}
+
 run_plugin_refresh() {
     local description="$1"
     local critical="${2:-false}"
@@ -317,7 +354,7 @@ if [ "$VERBOSE" = true ]; then
 fi
 
 # Initialize counters
-TOTAL_COMMANDS=5  # Update this number when adding commands
+TOTAL_COMMANDS=6  # Update this number when adding commands
 COMPLETED_COMMANDS=0
 FAILED_COMMANDS=0
 
@@ -345,7 +382,15 @@ else
     ((FAILED_COMMANDS++))
 fi
 
-# Command 4: Plugin refresh - Deactivate and reactivate key plugins
+# Command 4: Option cleanup - Delete specific WordPress options
+# This cleans up specific MemberCore and MCPD options before plugin refresh
+if run_option_cleanup "Option Cleanup (Delete MCPD/MemberCore Options)" false; then
+    ((COMPLETED_COMMANDS++))
+else
+    ((FAILED_COMMANDS++))
+fi
+
+# Command 5: Plugin refresh - Deactivate and reactivate key plugins
 # This refreshes plugins and clears any cached states
 if run_plugin_refresh "Plugin Refresh (Deactivate/Reactivate)" false; then
     ((COMPLETED_COMMANDS++))
@@ -353,7 +398,7 @@ else
     ((FAILED_COMMANDS++))
 fi
 
-# Command 5: Bulk create users from JSON with avatars and memberships
+# Command 6: Bulk create users from JSON with avatars and memberships
 # This populates the site with demo users after the cleanup
 if run_wp_command "Bulk Create Users from JSON" "meco user bulk-create-from-json --upload-avatars --skip-existing --memberships=11,12,13,14 --membership-probability=75 --confirm" false; then
     ((COMPLETED_COMMANDS++))
