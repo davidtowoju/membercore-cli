@@ -106,11 +106,12 @@ run_user_cleanup() {
     users_to_delete=$(wp --path="$WORDPRESS_PATH" user list --field=ID --exclude=1 2>&1)
     local wp_exit_code=$?
     
-    # Debug logging
-    local total_users=$(wp --path="$WORDPRESS_PATH" user list --format=count 2>&1)
-    log "Debug: Total users found: '$total_users'"
-    log "Debug: Users to delete: '$users_to_delete'"
-    log "Debug: WP-CLI exit code: $wp_exit_code"
+    # Debug logging (only in verbose mode)
+    if [ "$VERBOSE" = true ]; then
+        local total_users=$(wp --path="$WORDPRESS_PATH" user list --format=count 2>&1)
+        log "Debug: Total users found: '$total_users'"
+        log "Debug: WP-CLI exit code: $wp_exit_code"
+    fi
     
     # Check if WP-CLI command failed
     if [ $wp_exit_code -ne 0 ]; then
@@ -127,11 +128,10 @@ run_user_cleanup() {
     log "Found $user_count users to delete (excluding admin ID=1)"
     
     if [ "$DRY_RUN" = true ]; then
-        log "DRY RUN MODE: Would delete the following users:"
-        for user_id in $users_to_delete; do
-            local user_info=$(wp --path="$WORDPRESS_PATH" user get "$user_id" --field=user_login 2>/dev/null || echo "ID:$user_id")
-            log "  - Would delete user: $user_info (ID: $user_id)"
-        done
+        log "DRY RUN MODE: Would delete $user_count users"
+        log "Sample user IDs to delete: $(echo $users_to_delete | head -n 1 | cut -d' ' -f1-10 | tr '\n' ' ')..."
+        log "Highest user ID: $(echo $users_to_delete | tr ' ' '\n' | sort -n | tail -1)"
+        log "Lowest user ID: $(echo $users_to_delete | tr ' ' '\n' | sort -n | head -1)"
         log "DRY RUN: Would reassign all content to admin user (ID: 1)"
         return 0
     fi
@@ -142,6 +142,71 @@ run_user_cleanup() {
     # Execute the deletion
     if wp --path="$WORDPRESS_PATH" user delete $users_to_delete --reassign=1 --yes $QUIET_FLAG; then
         log "✓ Completed: $description - Deleted $user_count users"
+        return 0
+    else
+        log_error "✗ Failed: $description"
+        if [ "$critical" = true ]; then
+            log_error "Critical command failed. Stopping execution."
+            exit 1
+        fi
+        return 1
+    fi
+}
+
+run_post_cleanup() {
+    local description="$1"
+    local critical="${2:-false}"
+    
+    log "Starting: $description"
+    
+    # Check if WP-CLI is working
+    if ! wp --version &>/dev/null; then
+        log_error "WP-CLI not found or not working"
+        return 1
+    fi
+    
+    # Get list of posts to delete (mc-directory and mcpd-profile post types)
+    local posts_to_delete
+    posts_to_delete=$(wp --path="$WORDPRESS_PATH" post list --post_type='mc-directory,mcpd-profile' --format=ids 2>&1)
+    local wp_exit_code=$?
+    
+    # Debug logging (only in verbose mode)
+    if [ "$VERBOSE" = true ]; then
+        local total_posts=$(wp --path="$WORDPRESS_PATH" post list --post_type='mc-directory,mcpd-profile' --format=count 2>&1)
+        log "Debug: Total posts found: '$total_posts'"
+        log "Debug: WP-CLI exit code: $wp_exit_code"
+    fi
+    
+    # Check if WP-CLI command failed
+    if [ $wp_exit_code -ne 0 ]; then
+        log_error "WP-CLI post list failed: $posts_to_delete"
+        return 1
+    fi
+    
+    if [ -z "$posts_to_delete" ]; then
+        log "No posts to delete (no mc-directory or mcpd-profile posts found)"
+        return 0
+    fi
+    
+    local post_count=$(echo "$posts_to_delete" | wc -w)
+    log "Found $post_count posts to delete (types: mc-directory, mcpd-profile)"
+    
+    if [ "$DRY_RUN" = true ]; then
+        log "DRY RUN MODE: Would delete $post_count posts"
+        log "Sample post IDs to delete: $(echo $posts_to_delete | head -n 1 | cut -d' ' -f1-10 | tr '\n' ' ')..."
+        if [ $post_count -gt 10 ]; then
+            log "...and $(($post_count - 10)) more posts"
+        fi
+        log "DRY RUN: Would permanently delete (--force) all listed posts"
+        return 0
+    fi
+    
+    # WARNING: This is destructive - log it clearly
+    log "⚠️  WARNING: Permanently deleting $post_count posts (mc-directory, mcpd-profile types)"
+    
+    # Execute the deletion
+    if wp --path="$WORDPRESS_PATH" post delete $posts_to_delete --force $QUIET_FLAG; then
+        log "✓ Completed: $description - Deleted $post_count posts"
         return 0
     else
         log_error "✗ Failed: $description"
@@ -199,17 +264,35 @@ if ! wp --version &>/dev/null; then
     exit 1
 fi
 
-log "WordPress path: $WORDPRESS_PATH"
-log "WP-CLI version: $(wp --version 2>/dev/null || echo 'Not found')"
+if [ "$VERBOSE" = true ]; then
+    log "WordPress path: $WORDPRESS_PATH"
+    log "WP-CLI version: $(wp --version 2>/dev/null || echo 'Not found')"
+fi
 
 # Initialize counters
-TOTAL_COMMANDS=1  # Update this number when adding commands
+TOTAL_COMMANDS=3  # Update this number when adding commands
 COMPLETED_COMMANDS=0
 FAILED_COMMANDS=0
 
 # Command 1: User cleanup - DELETE ALL USERS EXCEPT ADMIN (ID=1) and reassign content
 # ⚠️  WARNING: This is a DESTRUCTIVE operation that removes all users except admin
 if run_user_cleanup "User Cleanup (Delete Non-Admin Users)" false; then
+    ((COMPLETED_COMMANDS++))
+else
+    ((FAILED_COMMANDS++))
+fi
+
+# Command 2: MemberCore Fresh - Reset MemberCore data with specific prefixes
+# ⚠️  WARNING: This resets MemberCore database tables and data
+if run_wp_command "MemberCore Fresh Reset" "meco fresh --prefixes=meco,mcpd --yes" false; then
+    ((COMPLETED_COMMANDS++))
+else
+    ((FAILED_COMMANDS++))
+fi
+
+# Command 3: Post cleanup - DELETE posts with types mc-directory and mcpd-profile
+# ⚠️  WARNING: This permanently deletes directory and profile posts
+if run_post_cleanup "Post Cleanup (Delete Directories & Profiles)" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
