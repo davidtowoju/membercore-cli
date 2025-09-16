@@ -83,6 +83,51 @@ run_wp_command() {
     fi
 }
 
+run_user_cleanup() {
+    local description="$1"
+    local critical="${2:-false}"
+    
+    log "Starting: $description"
+    
+    # Get list of users to delete (exclude admin user ID 1)
+    local users_to_delete
+    users_to_delete=$(wp --path="$WORDPRESS_PATH" user list --field=ID --exclude=1 $QUIET_FLAG 2>/dev/null)
+    
+    if [ -z "$users_to_delete" ]; then
+        log "No users to delete (only admin user exists)"
+        return 0
+    fi
+    
+    local user_count=$(echo "$users_to_delete" | wc -w)
+    log "Found $user_count users to delete (excluding admin ID=1)"
+    
+    if [ "$DRY_RUN" = true ]; then
+        log "DRY RUN MODE: Would delete the following users:"
+        for user_id in $users_to_delete; do
+            local user_info=$(wp --path="$WORDPRESS_PATH" user get "$user_id" --field=user_login 2>/dev/null || echo "ID:$user_id")
+            log "  - Would delete user: $user_info (ID: $user_id)"
+        done
+        log "DRY RUN: Would reassign all content to admin user (ID: 1)"
+        return 0
+    fi
+    
+    # WARNING: This is destructive - log it clearly
+    log "⚠️  WARNING: Deleting $user_count users and reassigning content to admin (ID: 1)"
+    
+    # Execute the deletion
+    if wp --path="$WORDPRESS_PATH" user delete $users_to_delete --reassign=1 --yes $QUIET_FLAG; then
+        log "✓ Completed: $description - Deleted $user_count users"
+        return 0
+    else
+        log_error "✗ Failed: $description"
+        if [ "$critical" = true ]; then
+            log_error "Critical command failed. Stopping execution."
+            exit 1
+        fi
+        return 1
+    fi
+}
+
 cleanup() {
     log "Cleaning up..."
     rm -f "$LOCK_FILE"
@@ -111,47 +156,13 @@ log "Mode: $([ "$DRY_RUN" = true ] && echo 'DRY RUN' || echo 'LIVE')"
 log "========================================="
 
 # Initialize counters
-TOTAL_COMMANDS=6
+TOTAL_COMMANDS=1  # Update this number when adding commands
 COMPLETED_COMMANDS=0
 FAILED_COMMANDS=0
 
-# Command 1: Sync all directories (CRITICAL)
-if run_wp_command "Directory Sync" "meco directory sync-all" true; then
-    ((COMPLETED_COMMANDS++))
-else
-    ((FAILED_COMMANDS++))
-fi
-
-# Command 2: Retry failed jobs
-if run_wp_command "Retry Failed Jobs" "meco jobs retry --limit=20"; then
-    ((COMPLETED_COMMANDS++))
-else
-    ((FAILED_COMMANDS++))
-fi
-
-# Command 3: Clean old failed jobs (older than 7 days)
-if run_wp_command "Clean Old Failed Jobs" "meco jobs clear --status=failed --older-than=168"; then
-    ((COMPLETED_COMMANDS++))
-else
-    ((FAILED_COMMANDS++))
-fi
-
-# Command 4: Update enrollment counts
-if run_wp_command "Update Enrollment Counts" "meco directory update-enrollment-counts"; then
-    ((COMPLETED_COMMANDS++))
-else
-    ((FAILED_COMMANDS++))
-fi
-
-# Command 5: Validate membership integrity
-if run_wp_command "Membership Validation" "meco membership list --format=count"; then
-    ((COMPLETED_COMMANDS++))
-else
-    ((FAILED_COMMANDS++))
-fi
-
-# Command 6: Show final statistics
-if run_wp_command "Generate Statistics" "meco directory stats"; then
+# Command 1: User cleanup - DELETE ALL USERS EXCEPT ADMIN (ID=1) and reassign content
+# ⚠️  WARNING: This is a DESTRUCTIVE operation that removes all users except admin
+if run_user_cleanup "User Cleanup (Delete Non-Admin Users)" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
