@@ -218,6 +218,53 @@ run_post_cleanup() {
     fi
 }
 
+run_plugin_refresh() {
+    local description="$1"
+    local critical="${2:-false}"
+    local plugins="spatie-ray user-switching code-snippets membercore membercore-cli membercore-profiles-and-directories"
+    
+    log "Starting: $description"
+    
+    # Check if WP-CLI is working
+    if ! wp --version &>/dev/null; then
+        log_error "WP-CLI not found or not working"
+        return 1
+    fi
+    
+    if [ "$DRY_RUN" = true ]; then
+        log "DRY RUN MODE: Would deactivate and reactivate plugins:"
+        for plugin in $plugins; do
+            log "  - Would refresh plugin: $plugin"
+        done
+        return 0
+    fi
+    
+    # Deactivate plugins
+    log "Deactivating plugins: $plugins"
+    if wp --path="$WORDPRESS_PATH" plugin deactivate $plugins $QUIET_FLAG; then
+        log "✓ Plugins deactivated successfully"
+    else
+        log_error "Failed to deactivate some plugins (continuing anyway)"
+    fi
+    
+    # Small delay to ensure deactivation is processed
+    sleep 2
+    
+    # Reactivate plugins
+    log "Reactivating plugins: $plugins"
+    if wp --path="$WORDPRESS_PATH" plugin activate $plugins $QUIET_FLAG; then
+        log "✓ Completed: $description - Plugins refreshed successfully"
+        return 0
+    else
+        log_error "✗ Failed to reactivate some plugins"
+        if [ "$critical" = true ]; then
+            log_error "Critical command failed. Stopping execution."
+            exit 1
+        fi
+        return 1
+    fi
+}
+
 cleanup() {
     log "Cleaning up..."
     rm -f "$LOCK_FILE"
@@ -270,7 +317,7 @@ if [ "$VERBOSE" = true ]; then
 fi
 
 # Initialize counters
-TOTAL_COMMANDS=3  # Update this number when adding commands
+TOTAL_COMMANDS=5  # Update this number when adding commands
 COMPLETED_COMMANDS=0
 FAILED_COMMANDS=0
 
@@ -293,6 +340,22 @@ fi
 # Command 3: Post cleanup - DELETE posts with types mc-directory and mcpd-profile
 # ⚠️  WARNING: This permanently deletes directory and profile posts
 if run_post_cleanup "Post Cleanup (Delete Directories & Profiles)" false; then
+    ((COMPLETED_COMMANDS++))
+else
+    ((FAILED_COMMANDS++))
+fi
+
+# Command 4: Plugin refresh - Deactivate and reactivate key plugins
+# This refreshes plugins and clears any cached states
+if run_plugin_refresh "Plugin Refresh (Deactivate/Reactivate)" false; then
+    ((COMPLETED_COMMANDS++))
+else
+    ((FAILED_COMMANDS++))
+fi
+
+# Command 5: Bulk create users from JSON with avatars and memberships
+# This populates the site with demo users after the cleanup
+if run_wp_command "Bulk Create Users from JSON" "meco user bulk-create-from-json --upload-avatars --skip-existing --memberships=11,12,13,14 --membership-probability=75 --yes" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
