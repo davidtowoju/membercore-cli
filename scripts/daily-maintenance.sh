@@ -91,7 +91,12 @@ run_user_cleanup() {
     
     # Get list of users to delete (exclude admin user ID 1)
     local users_to_delete
-    users_to_delete=$(wp --path="$WORDPRESS_PATH" user list --field=ID --exclude=1 $QUIET_FLAG 2>/dev/null)
+    users_to_delete=$(wp --path="$WORDPRESS_PATH" user list --field=ID --exclude=1 2>/dev/null)
+    
+    # Debug logging
+    local total_users=$(wp --path="$WORDPRESS_PATH" user list --format=count 2>/dev/null)
+    log "Debug: Total users found: $total_users"
+    log "Debug: Users to delete: '$users_to_delete'"
     
     if [ -z "$users_to_delete" ]; then
         log "No users to delete (only admin user exists)"
