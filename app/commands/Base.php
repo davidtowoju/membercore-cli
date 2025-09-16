@@ -23,7 +23,7 @@ class Base
      * ## OPTIONS
      *
      * [<model>...]
-     * : The specific tables/models to truncate. If none specified, truncates all MemberCore tables.
+     * : The specific tables/models to truncate. If none specified, truncates all tables with specified prefixes.
      *
      * [--dry-run]
      * : Show what would be truncated without actually doing it.
@@ -31,11 +31,19 @@ class Base
      * [--confirm]
      * : Skip confirmation prompt.
      *
+     * [--prefixes=<prefixes>]
+     * : Comma-separated list of table prefixes to truncate. Default: meco
+     *
+     * [--include-posts]
+     * : Also delete related WordPress posts for the specified prefixes.
+     *
      * ## EXAMPLES
      *
      *     wp meco fresh
+     *     wp meco fresh --prefixes=meco,mcpd
      *     wp meco fresh transactions subscriptions
-     *     wp meco fresh --dry-run
+     *     wp meco fresh --dry-run --prefixes=meco,mcpd,mpcs
+     *     wp meco fresh --prefixes=mcpd --include-posts
      *
      * @when after_wp_load
      */
@@ -45,19 +53,37 @@ class Base
 
         $dry_run = isset($assoc_args['dry-run']);
         $confirm = isset($assoc_args['confirm']);
+        $include_posts = isset($assoc_args['include-posts']);
+        
+        // Parse prefixes - default to 'meco' for backwards compatibility
+        $prefixes_string = $assoc_args['prefixes'] ?? 'meco';
+        $prefixes = array_map('trim', explode(',', $prefixes_string));
+        $prefixes = array_filter($prefixes); // Remove empty values
+
+        if (empty($prefixes)) {
+            \WP_CLI::error('At least one table prefix must be specified.');
+            return;
+        }
+
+        // Show what will be affected
+        $prefix_list = implode(', ', $prefixes);
+        $action_description = "tables with prefix(es): {$prefix_list}";
+        if ($include_posts) {
+            $action_description .= " and related WordPress posts";
+        }
 
         if (!$dry_run && !$confirm) {
-            \WP_CLI::confirm('This will permanently delete MemberCore data. Are you sure?');
+            \WP_CLI::confirm("This will permanently delete {$action_description}. Are you sure?");
         }
 
         if (empty($args)) {
-            $this->truncate_all_tables($dry_run);
+            $this->truncate_all_tables_by_prefixes($prefixes, $dry_run, $include_posts);
         } else {
             $this->truncate_specific_tables($args, $dry_run);
         }
 
         if (!$dry_run) {
-            \WP_CLI::success('MemberCore data has been reset.');
+            \WP_CLI::success('Data has been reset for prefixes: ' . $prefix_list);
         } else {
             \WP_CLI::log('DRY RUN: No changes were made.');
         }
@@ -91,7 +117,7 @@ class Base
         \WP_CLI::line('Available MemberCore CLI commands:');
         \WP_CLI::line('');
         \WP_CLI::line('Base commands (wp meco):');
-        \WP_CLI::line('  fresh     - Reset/truncate MemberCore tables');
+        \WP_CLI::line('  fresh     - Reset/truncate tables by prefix (supports --prefixes=meco,mcpd,mpcs,etc)');
         \WP_CLI::line('  info      - Show system information');
         \WP_CLI::line('  list      - Show this help');
         \WP_CLI::line('');
@@ -107,50 +133,123 @@ class Base
         \WP_CLI::line('Transaction commands (wp meco transaction):');
         \WP_CLI::line('  expire    - Expire specific transactions');
         \WP_CLI::line('');
+        \WP_CLI::line('Snippet commands (wp mcpd snippet):');
+        \WP_CLI::line('  create    - Create new code snippet (requires Code Snippets plugin)');
+        \WP_CLI::line('  list      - List existing code snippets');
+        \WP_CLI::line('  delete    - Delete a code snippet');
+        \WP_CLI::line('');
         \WP_CLI::line('For more details on each command, use: wp help <command>');
     }
 
     /**
-     * Truncate all MemberCore tables
+     * Truncate all tables by specified prefixes
+     *
+     * @param array $prefixes
+     * @param bool $dry_run
+     * @param bool $include_posts
+     */
+    protected function truncate_all_tables_by_prefixes(array $prefixes, bool $dry_run, bool $include_posts = false): void
+    {
+        global $wpdb;
+
+        $all_tables = [];
+        $all_post_types = [];
+
+        // Get tables for each prefix
+        foreach ($prefixes as $prefix) {
+            $pattern = '%' . $wpdb->esc_like($prefix) . '_%';
+            $tables = $wpdb->get_results($wpdb->prepare("SHOW TABLES LIKE %s", $pattern));
+            
+            foreach ($tables as $table) {
+                foreach ($table as $tableName) {
+                    $all_tables[] = $tableName;
+                }
+            }
+
+            // Define post types for each prefix
+            $post_types_map = $this->get_post_types_by_prefix($prefix);
+            $all_post_types = array_merge($all_post_types, $post_types_map);
+        }
+
+        // Remove duplicates
+        $all_tables = array_unique($all_tables);
+        $all_post_types = array_unique($all_post_types);
+
+        if (empty($all_tables)) {
+            \WP_CLI::warning('No tables found with the specified prefix(es): ' . implode(', ', $prefixes));
+            return;
+        }
+
+        if ($dry_run) {
+            \WP_CLI::line('Tables that would be truncated:');
+            foreach ($all_tables as $tableName) {
+                \WP_CLI::line("  - {$tableName}");
+            }
+
+            if ($include_posts && !empty($all_post_types)) {
+                \WP_CLI::line('Post types that would be deleted:');
+                foreach ($all_post_types as $post_type) {
+                    $count = wp_count_posts($post_type);
+                    $total = 0;
+                    foreach ($count as $status => $num) {
+                        $total += $num;
+                    }
+                    \WP_CLI::line("  - {$post_type} ({$total} posts)");
+                }
+            }
+        } else {
+            // Truncate tables
+            foreach ($all_tables as $tableName) {
+                $wpdb->query("TRUNCATE TABLE {$tableName}");
+                \WP_CLI::log("Truncated table: {$tableName}");
+            }
+
+            // Delete posts if requested
+            if ($include_posts && !empty($all_post_types)) {
+                foreach ($all_post_types as $post_type) {
+                    $posts = get_posts([
+                        'post_type' => $post_type,
+                        'numberposts' => -1,
+                        'post_status' => 'any'
+                    ]);
+
+                    $deleted_count = 0;
+                    foreach ($posts as $post) {
+                        wp_delete_post($post->ID, true);
+                        $deleted_count++;
+                    }
+                    \WP_CLI::log("Deleted {$deleted_count} {$post_type} posts");
+                }
+            }
+        }
+    }
+
+    /**
+     * Get post types associated with a prefix
+     *
+     * @param string $prefix
+     * @return array
+     */
+    protected function get_post_types_by_prefix(string $prefix): array
+    {
+        $post_types_map = [
+            'meco' => ['membercoreproduct', 'meco_rule', 'meco_group', 'meco_reminder'],
+            'mcpd' => ['mcpd_directory', 'mcpd_job'],
+            'mpcs' => ['mpcs_course', 'mpcs_lesson'],
+            'mpch' => ['mpch_program', 'mpch_session']
+        ];
+
+        return $post_types_map[$prefix] ?? [];
+    }
+
+    /**
+     * Truncate all MemberCore tables (backwards compatibility)
      *
      * @param bool $dry_run
      */
     protected function truncate_all_tables(bool $dry_run): void
     {
-        global $wpdb;
-
-        $core_tables = $wpdb->get_results("SHOW TABLES LIKE '%meco_%'");
-
-        if ($dry_run) {
-            \WP_CLI::line('Tables that would be truncated:');
-            foreach ($core_tables as $table) {
-                foreach ($table as $tableName) {
-                    \WP_CLI::line("  - {$tableName}");
-                }
-            }
-        } else {
-            foreach ($core_tables as $table) {
-                foreach ($table as $tableName) {
-                    $wpdb->query("TRUNCATE TABLE {$tableName}");
-                    \WP_CLI::log("Truncated table: {$tableName}");
-                }
-            }
-
-            // Delete MemberCore posts
-            $post_types = ['membercoreproduct', 'meco_rule', 'meco_group', 'meco_reminder'];
-            foreach ($post_types as $post_type) {
-                $posts = get_posts([
-                    'post_type' => $post_type,
-                    'numberposts' => -1,
-                    'post_status' => 'any'
-                ]);
-
-                foreach ($posts as $post) {
-                    wp_delete_post($post->ID, true);
-                }
-                \WP_CLI::log("Deleted {$post_type} posts");
-            }
-        }
+        $this->truncate_all_tables_by_prefixes(['meco'], $dry_run, true);
     }
 
     /**

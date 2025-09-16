@@ -37,6 +37,7 @@ if (file_exists(MEMBERCORE_CLI_PLUGIN_DIR . '/vendor/autoload.php')) {
     require_once MEMBERCORE_CLI_PLUGIN_DIR . '/app/commands/Coaching.php';
     require_once MEMBERCORE_CLI_PLUGIN_DIR . '/app/commands/Courses.php';
     require_once MEMBERCORE_CLI_PLUGIN_DIR . '/app/commands/Directory.php';
+    require_once MEMBERCORE_CLI_PLUGIN_DIR . '/app/commands/Snippet.php';
 }
 
 // Only run if WP-CLI is available
@@ -121,6 +122,13 @@ add_action('plugins_loaded', function() {
             'namespace'  => 'membercore\\cli\\commands',
             'dependency' => null,
             'description' => 'Directory job management commands (legacy)',
+        ],
+        [
+            'slug'       => 'mcpd snippet',
+            'class'      => 'Snippet',
+            'namespace'  => 'membercore\\cli\\commands',
+            'dependency' => null,
+            'description' => 'Code Snippets management commands (requires Code Snippets plugin)',
         ],
     ];
 
