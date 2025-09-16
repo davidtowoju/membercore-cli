@@ -327,8 +327,8 @@ class User extends Base
             $this->log("- DRY RUN: No users will be created");
         }
 
-        // Confirm unless dry run
-        if (!$dry_run) {
+        // Confirm unless dry run or --confirm flag is used
+        if (!$dry_run && !$skip_confirm) {
             \WP_CLI::confirm("Are you sure you want to create {$count} users?");
         }
 
@@ -512,6 +512,9 @@ class User extends Base
      * [--skip-existing]
      * : Skip users that already exist instead of erroring
      *
+     * [--confirm]
+     * : Skip confirmation prompt
+     *
      * ## EXAMPLES
      *
      *     wp meco user bulk-create-from-json
@@ -557,6 +560,7 @@ class User extends Base
         $send_emails = isset($assoc_args['send-emails']);
         $upload_avatars = isset($assoc_args['upload-avatars']);
         $skip_existing = isset($assoc_args['skip-existing']);
+        $skip_confirm = isset($assoc_args['confirm']);
 
         // Validate count
         if ($count <= 0) {
@@ -645,8 +649,8 @@ class User extends Base
             $this->log("- DRY RUN: No users will be created");
         }
 
-        // Confirm unless dry run
-        if (!$dry_run) {
+        // Confirm unless dry run or --confirm flag is used
+        if (!$dry_run && !$skip_confirm) {
             \WP_CLI::confirm("Are you sure you want to create " . count($selected_users) . " users?");
         }
 

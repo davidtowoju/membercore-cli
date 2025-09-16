@@ -355,7 +355,7 @@ fi
 
 # Command 5: Bulk create users from JSON with avatars and memberships
 # This populates the site with demo users after the cleanup
-if run_wp_command "Bulk Create Users from JSON" "meco user bulk-create-from-json --upload-avatars --skip-existing --memberships=11,12,13,14 --membership-probability=75" false; then
+if run_wp_command "Bulk Create Users from JSON" "meco user bulk-create-from-json --upload-avatars --skip-existing --memberships=11,12,13,14 --membership-probability=75 --confirm" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
