@@ -18,7 +18,7 @@ class MemberCore_Maintenance_API
 {
 
     private $script_path;
-    private $namespace = 'membercore/v1';
+    private $namespace = 'membercore-cli/v1';
 
     public function __construct()
     {
