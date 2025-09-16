@@ -14,9 +14,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-echo '<div style="background:red;color:white;padding:10px;position:fixed;top:0;left:0;z-index:9999;">MU-PLUGIN LOADED!</div>';
-var_dump('rouuute');
-die('STOP HERE - MU PLUGIN DEBUG');
+// echo '<div style="background:red;color:white;padding:10px;position:fixed;top:0;left:0;z-index:9999;">MU-PLUGIN LOADED!</div>';
+// var_dump('rouuute');
+// die('STOP HERE - MU PLUGIN DEBUG');
 
 
 class MemberCore_Maintenance_API
