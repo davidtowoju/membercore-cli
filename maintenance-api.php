@@ -19,7 +19,7 @@ class MemberCore_Maintenance_API
 
     private $script_path;
     private $namespace = 'membercore-cli/v1';
-
+var_dump('rouuute');
     public function __construct()
     {
         $this->script_path = ABSPATH . 'wp-content/plugins/membercore-cli/scripts/daily-maintenance.sh';
