@@ -7,8 +7,8 @@
 #   ./daily-maintenance.sh [--dry-run] [--verbose]
 
 # Configuration for directories.today
-WORDPRESS_PATH="/home/pluginette-bolbf/directories.today"
-LOG_DIR="/home/pluginette-bolbf/directories.today/wp-content/uploads/membercore-logs"
+WORDPRESS_PATH="/home/pluginette-bolbf/directories.today/public"
+LOG_DIR="/home/pluginette-bolbf/directories.today/public/wp-content/uploads/membercore-logs"
 LOG_FILE="$LOG_DIR/daily-maintenance-$(date +%Y-%m-%d).log"
 LOCK_FILE="/tmp/membercore-maintenance.lock"
 
