@@ -14,12 +14,17 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+echo '<div style="background:red;color:white;padding:10px;position:fixed;top:0;left:0;z-index:9999;">MU-PLUGIN LOADED!</div>';
+var_dump('rouuute');
+die('STOP HERE - MU PLUGIN DEBUG');
+
+
 class MemberCore_Maintenance_API
 {
 
     private $script_path;
     private $namespace = 'membercore-cli/v1';
-var_dump('rouuute');
+
     public function __construct()
     {
         $this->script_path = ABSPATH . 'wp-content/plugins/membercore-cli/scripts/daily-maintenance.sh';
