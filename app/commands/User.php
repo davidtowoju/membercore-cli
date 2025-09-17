@@ -327,8 +327,8 @@ class User extends Base
             $this->log("- DRY RUN: No users will be created");
         }
 
-        // Confirm unless dry run or --confirm flag is used
-        if (!$dry_run && !$skip_confirm) {
+        // Confirm unless dry run (no confirmation needed for bulk create)
+        if (!$dry_run) {
             \WP_CLI::confirm("Are you sure you want to create {$count} users?");
         }
 
@@ -515,6 +515,9 @@ class User extends Base
      * [--confirm]
      * : Skip confirmation prompt
      *
+     * [--randomize]
+     * : Randomize the order of user creation instead of alphabetical order
+     *
      * ## EXAMPLES
      *
      *     wp meco user bulk-create-from-json
@@ -522,6 +525,7 @@ class User extends Base
      *     wp meco user bulk-create-from-json --memberships=9,10,11,12 --membership-probability=75
      *     wp meco user bulk-create-from-json --domain=mysite.com --upload-avatars
      *     wp meco user bulk-create-from-json --dry-run --count=10
+     *     wp meco user bulk-create-from-json --randomize --count=50
      *
      * @when after_wp_load
      * @alias bulk-create-from-json
@@ -561,6 +565,7 @@ class User extends Base
         $upload_avatars = isset($assoc_args['upload-avatars']);
         $skip_existing = isset($assoc_args['skip-existing']);
         $skip_confirm = isset($assoc_args['confirm']);
+        $randomize = isset($assoc_args['randomize']);
 
         // Validate count
         if ($count <= 0) {
@@ -618,6 +623,11 @@ class User extends Base
             $selected_users = $users_data;
         }
 
+        // Randomize order if requested
+        if ($randomize) {
+            shuffle($selected_users);
+        }
+
         // Show summary
         $this->log("Bulk User Creation from JSON Summary:");
         $this->log("- JSON File: {$json_file}");
@@ -643,6 +653,10 @@ class User extends Base
             } else {
                 $this->log("- Upload Avatars: Yes ({$avatars_dir})");
             }
+        }
+
+        if ($randomize) {
+            $this->log("- Randomize Order: Yes (users will be created in random order)");
         }
         
         if ($dry_run) {
