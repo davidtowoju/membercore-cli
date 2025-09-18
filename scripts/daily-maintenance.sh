@@ -145,7 +145,7 @@ else
 fi
 
 # Command 2: WordPress Fresh Install - Install WordPress with admin user
-if run_wp_command "WordPress Fresh Install" "core install --url=\"https://directories.test\" --title=\"directories\" --admin_user=\"admin\" --admin_password=\"pass\" --admin_email=\"admin@example.test\"" false; then
+if run_wp_command "WordPress Fresh Install" "core install --url=\"https://directories.test\" --title=\"directories\" --admin_user=\"admin\" --admin_password=\"pass\" --admin_email=\"webprofdave@gmail.com\"" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
@@ -173,7 +173,7 @@ else
 fi
 
 # Command 6: Activate Plugins - Activate required plugins
-if run_wp_command "Activate Plugins" "plugin activate wordpress-importer membercore membercore-cli membercore-profiles-and-directories" false; then
+if run_wp_command "Activate Plugins" "plugin activate wordpress-importer membercore membercore-cli membercore-profiles-and-directories code-snippets" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
