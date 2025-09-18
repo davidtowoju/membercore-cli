@@ -132,7 +132,7 @@ if [ "$VERBOSE" = true ]; then
 fi
 
 # Initialize counters
-TOTAL_COMMANDS=12  # Update this number when adding commands
+TOTAL_COMMANDS=13  # Update this number when adding commands
 COMPLETED_COMMANDS=0
 FAILED_COMMANDS=0
 
@@ -197,27 +197,9 @@ fi
 
 # Command 8: Import Demo Data - Import directories and demo content
 DIRECTORIES_XML="$WORDPRESS_PATH/wp-content/plugins/membercore-cli/app/assets/directories.xml"
-log "Debug: Looking for XML file at: $DIRECTORIES_XML"
-if [ -f "$DIRECTORIES_XML" ]; then
-    log "Debug: XML file exists and is readable"
-else
-    log_error "Debug: XML file not found or not readable at: $DIRECTORIES_XML"
-    log "Debug: Checking if directory exists..."
-    if [ -d "$WORDPRESS_PATH/wp-content/plugins/membercore-cli/app/assets/" ]; then
-        log "Debug: Assets directory exists"
-        log "Debug: Files in assets directory:"
-        ls -la "$WORDPRESS_PATH/wp-content/plugins/membercore-cli/app/assets/" | while read line; do
-            log "  $line"
-        done
-    else
-        log_error "Debug: Assets directory does not exist"
-    fi
-fi
-
-# Execute import directly to avoid quoting issues
 log "Starting: Import Demo Data"
 if [ "$DRY_RUN" = true ]; then
-    log "DRY RUN MODE: Would import $DIRECTORIES_XML"
+    log "DRY RUN MODE: Would import directories.xml"
     ((COMPLETED_COMMANDS++))
 else
     if wp --path="$WORDPRESS_PATH" import "$DIRECTORIES_XML" --authors=create $QUIET_FLAG; then
@@ -236,7 +218,14 @@ else
     ((FAILED_COMMANDS++))
 fi
 
-# Command 10: Create Demo Users - Bulk create users from JSON with avatars and memberships
+# Command 10: Set Permalink Structure - Set clean permalinks
+if run_wp_command "Set Permalink Structure" "rewrite structure '/%postname%/'" false; then
+    ((COMPLETED_COMMANDS++))
+else
+    ((FAILED_COMMANDS++))
+fi
+
+# Command 11: Create Demo Users - Bulk create users from JSON with avatars and memberships
 if run_wp_command "Create Demo Users" "meco user bulk-create-from-json --upload-avatars --skip-existing --memberships=14,15,16,17 --membership-probability=75 --randomize --confirm" false; then
     ((COMPLETED_COMMANDS++))
 else
@@ -244,10 +233,18 @@ else
 fi
 
 # Command 11: Sync Directories - Trigger directory sync action
-if run_wp_command "Sync Directories" "eval 'do_action(\\\"mcpd_sync_directories\\\");'" false; then
+log "Starting: Sync Directories"
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN MODE: Would sync directories"
     ((COMPLETED_COMMANDS++))
 else
-    ((FAILED_COMMANDS++))
+    if wp --path="$WORDPRESS_PATH" eval 'do_action("mcpd_sync_directories");' $QUIET_FLAG; then
+        log "✓ Completed: Sync Directories"
+        ((COMPLETED_COMMANDS++))
+    else
+        log_error "✗ Failed: Sync Directories"
+        ((FAILED_COMMANDS++))
+    fi
 fi
 
 # Command 12: Create Mailtrap Email Configuration Snippet
