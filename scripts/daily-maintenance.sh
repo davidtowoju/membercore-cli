@@ -218,14 +218,7 @@ else
     ((FAILED_COMMANDS++))
 fi
 
-# Command 10: Set Permalink Structure - Set clean permalinks
-if run_wp_command "Set Permalink Structure" "rewrite structure '/%postname%/'" false; then
-    ((COMPLETED_COMMANDS++))
-else
-    ((FAILED_COMMANDS++))
-fi
-
-# Command 11: Create Demo Users - Bulk create users from JSON with avatars and memberships
+# Command 10: Create Demo Users - Bulk create users from JSON with avatars and memberships
 if run_wp_command "Create Demo Users" "meco user bulk-create-from-json --upload-avatars --skip-existing --memberships=14,15,16,17 --membership-probability=75 --randomize --confirm" false; then
     ((COMPLETED_COMMANDS++))
 else
@@ -258,7 +251,22 @@ MAILTRAP_CODE="function mailtrap(\$phpmailer) {
 }
 add_action('phpmailer_init', 'mailtrap');"
 
-if run_wp_command "Create Mailtrap Email Snippet" "mcpd snippet create 'Mailtrap Email Configuration' --code='$MAILTRAP_CODE'" false; then
+log "Starting: Create Mailtrap Email Snippet"
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN MODE: Would create Mailtrap email snippet"
+    ((COMPLETED_COMMANDS++))
+else
+    if wp --path="$WORDPRESS_PATH" mcpd snippet create "Mailtrap Email Configuration" --code="$MAILTRAP_CODE" $QUIET_FLAG; then
+        log "✓ Completed: Create Mailtrap Email Snippet"
+        ((COMPLETED_COMMANDS++))
+    else
+        log_error "✗ Failed: Create Mailtrap Email Snippet"
+        ((FAILED_COMMANDS++))
+    fi
+fi
+
+# Command 13: Set Permalink Structure - Set clean permalinks (final step)
+if run_wp_command "Set Permalink Structure" "option update permalink_structure '/%postname%/'" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
