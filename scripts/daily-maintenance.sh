@@ -197,6 +197,23 @@ fi
 
 # Command 8: Import Demo Data - Import directories and demo content
 DIRECTORIES_XML="$WORDPRESS_PATH/wp-content/plugins/membercore-cli/app/assets/directories.xml"
+log "Debug: Looking for XML file at: $DIRECTORIES_XML"
+if [ -f "$DIRECTORIES_XML" ]; then
+    log "Debug: XML file exists and is readable"
+else
+    log_error "Debug: XML file not found or not readable at: $DIRECTORIES_XML"
+    log "Debug: Checking if directory exists..."
+    if [ -d "$WORDPRESS_PATH/wp-content/plugins/membercore-cli/app/assets/" ]; then
+        log "Debug: Assets directory exists"
+        log "Debug: Files in assets directory:"
+        ls -la "$WORDPRESS_PATH/wp-content/plugins/membercore-cli/app/assets/" | while read line; do
+            log "  $line"
+        done
+    else
+        log_error "Debug: Assets directory does not exist"
+    fi
+fi
+
 if run_wp_command "Import Demo Data" "import '$DIRECTORIES_XML' --authors=create" false; then
     ((COMPLETED_COMMANDS++))
 else
