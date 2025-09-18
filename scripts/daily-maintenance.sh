@@ -180,9 +180,7 @@ else
 fi
 
 # Command 7: Clear Posts Table - Truncate posts for clean import
-if run_wp_command "Clear Posts Table" "db cli --execute=\"TRUNCATE TABLE \$(wp db prefix)posts;\""
- false; then
-
+if run_wp_command "Clear Posts Table" "db cli --execute=\"SET FOREIGN_KEY_CHECKS=0; TRUNCATE TABLE \$(wp db prefix)posts; SET FOREIGN_KEY_CHECKS=1;\"" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
