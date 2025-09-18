@@ -132,7 +132,7 @@ if [ "$VERBOSE" = true ]; then
 fi
 
 # Initialize counters
-TOTAL_COMMANDS=11  # Update this number when adding commands
+TOTAL_COMMANDS=12  # Update this number when adding commands
 COMPLETED_COMMANDS=0
 FAILED_COMMANDS=0
 
@@ -209,6 +209,13 @@ fi
 
 # Command 11: Sync Directories - Trigger directory sync action
 if run_wp_command "Sync Directories" "eval 'do_action(\"mcpd_sync_directories\");'" false; then
+    ((COMPLETED_COMMANDS++))
+else
+    ((FAILED_COMMANDS++))
+fi
+
+# Command 12: Create Mailtrap Email Configuration Snippet
+if run_wp_command "Create Mailtrap Email Snippet" "mcpd snippet create \"Mailtrap Email Configuration\" --code=\"// Looking to send emails in production? Check out our Email API/SMTP product!\nfunction mailtrap(\\\$phpmailer) {\n  \\\$phpmailer->isSMTP();\n  \\\$phpmailer->Host = 'sandbox.smtp.mailtrap.io';\n  \\\$phpmailer->SMTPAuth = true;\n  \\\$phpmailer->Port = 2525;\n  \\\$phpmailer->Username = '0313439afbcb59';\n  \\\$phpmailer->Password = '8240e6c15bb783';\n}\"" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
