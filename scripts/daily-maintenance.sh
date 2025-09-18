@@ -186,7 +186,7 @@ if [ "$DRY_RUN" = true ]; then
     log "DRY RUN MODE: Would truncate posts table"
 else
     DB_PREFIX=$(wp --path="$WORDPRESS_PATH" db prefix)
-    if wp --path="$WORDPRESS_PATH" db cli --execute="SET FOREIGN_KEY_CHECKS=0; TRUNCATE TABLE ${DB_PREFIX}posts; SET FOREIGN_KEY_CHECKS=1;" $QUIET_FLAG; then
+    if wp --path="$WORDPRESS_PATH" db cli --execute="TRUNCATE TABLE ${DB_PREFIX}posts;" $QUIET_FLAG; then
         log "✓ Completed: Clear Posts Table"
         ((COMPLETED_COMMANDS++))
     else
@@ -196,7 +196,8 @@ else
 fi
 
 # Command 8: Import Demo Data - Import directories and demo content
-if run_wp_command "Import Demo Data" "import app/assets/directories.xml --authors=create" false; then
+DIRECTORIES_XML="$WORDPRESS_PATH/wp-content/plugins/membercore-cli/app/assets/directories.xml"
+if run_wp_command "Import Demo Data" "import '$DIRECTORIES_XML' --authors=create" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
