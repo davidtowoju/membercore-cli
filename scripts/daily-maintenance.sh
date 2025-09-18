@@ -214,10 +214,19 @@ else
     fi
 fi
 
-if run_wp_command "Import Demo Data" "import '$DIRECTORIES_XML' --authors=create" false; then
+# Execute import directly to avoid quoting issues
+log "Starting: Import Demo Data"
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN MODE: Would import $DIRECTORIES_XML"
     ((COMPLETED_COMMANDS++))
 else
-    ((FAILED_COMMANDS++))
+    if wp --path="$WORDPRESS_PATH" import "$DIRECTORIES_XML" --authors=create $QUIET_FLAG; then
+        log "✓ Completed: Import Demo Data"
+        ((COMPLETED_COMMANDS++))
+    else
+        log_error "✗ Failed: Import Demo Data"
+        ((FAILED_COMMANDS++))
+    fi
 fi
 
 # Command 9: Update URLs - Search and replace demo URLs with live URLs
