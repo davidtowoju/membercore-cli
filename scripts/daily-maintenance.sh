@@ -145,7 +145,7 @@ else
 fi
 
 # Command 2: WordPress Fresh Install - Install WordPress with admin user
-if run_wp_command "WordPress Fresh Install" "core install --url=\"https://directories.test\" --title=\"directories\" --admin_user=\"admin\" --admin_password=\"pass\" --admin_email=\"webprofdave@gmail.com\"" false; then
+if run_wp_command "WordPress Fresh Install" "core install --url=https://directories.today --title=directories --admin_user=admin --admin_password=pass --admin_email=david@caseproof.com" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
@@ -180,7 +180,7 @@ else
 fi
 
 # Command 7: Clear Posts Table - Truncate posts for clean import
-if run_wp_command "Clear Posts Table" "db query \"TRUNCATE TABLE wp_posts;\"" false; then
+if run_wp_command "Clear Posts Table" "db query 'TRUNCATE TABLE wp_posts;'" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
@@ -194,7 +194,7 @@ else
 fi
 
 # Command 9: Update URLs - Search and replace demo URLs with live URLs
-if run_wp_command "Update Site URLs" "search-replace 'directories.test' 'directories.test'" false; then
+if run_wp_command "Update Site URLs" "search-replace directories.test directories.today" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
@@ -208,14 +208,24 @@ else
 fi
 
 # Command 11: Sync Directories - Trigger directory sync action
-if run_wp_command "Sync Directories" "eval 'do_action(\"mcpd_sync_directories\");'" false; then
+if run_wp_command "Sync Directories" "eval 'do_action(\\\"mcpd_sync_directories\\\");'" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
 fi
 
 # Command 12: Create Mailtrap Email Configuration Snippet
-if run_wp_command "Create Mailtrap Email Snippet" "mcpd snippet create \"Mailtrap Email Configuration\" --code=\"// Looking to send emails in production? Check out our Email API/SMTP product!\nfunction mailtrap(\\\$phpmailer) {\n  \\\$phpmailer->isSMTP();\n  \\\$phpmailer->Host = 'sandbox.smtp.mailtrap.io';\n  \\\$phpmailer->SMTPAuth = true;\n  \\\$phpmailer->Port = 2525;\n  \\\$phpmailer->Username = '0313439afbcb59';\n  \\\$phpmailer->Password = '8240e6c15bb783';\n}\"" false; then
+MAILTRAP_CODE="function mailtrap(\$phpmailer) {
+  \$phpmailer->isSMTP();
+  \$phpmailer->Host = 'sandbox.smtp.mailtrap.io';
+  \$phpmailer->SMTPAuth = true;
+  \$phpmailer->Port = 2525;
+  \$phpmailer->Username = '0313439afbcb59';
+  \$phpmailer->Password = '8240e6c15bb783';
+}
+add_action('phpmailer_init', 'mailtrap');"
+
+if run_wp_command "Create Mailtrap Email Snippet" "mcpd snippet create 'Mailtrap Email Configuration' --code='$MAILTRAP_CODE'" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
