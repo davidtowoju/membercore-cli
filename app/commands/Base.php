@@ -104,6 +104,139 @@ class Base
     }
 
     /**
+     * Create demo membership products
+     *
+     * ## OPTIONS
+     *
+     * [--dry-run]
+     * : Show what would be created without actually creating it.
+     *
+     * [--confirm]
+     * : Skip confirmation prompt.
+     *
+     * ## EXAMPLES
+     *
+     *     wp meco setup_memberships
+     *     wp meco setup_memberships --dry-run
+     *     wp meco setup_memberships --confirm
+     *
+     * @when after_wp_load
+     * @alias setup-memberships
+     */
+    public function setup_memberships($args, $assoc_args)
+    {
+        $dry_run = isset($assoc_args['dry-run']);
+        $confirm = isset($assoc_args['confirm']);
+
+        $memberships = [
+            [
+                'title' => 'Basic Membership',
+                'price' => '29.00',
+                'type' => 'one-time'
+            ],
+            [
+                'title' => 'Basic Membership – Monthly',
+                'price' => '9.00',
+                'period_type' => 'regular',
+                'period' => 'months',
+                'period_count' => '1',
+                'recurring' => '1',
+                'type' => 'recurring'
+            ],
+            [
+                'title' => 'Pro Membership – Yearly',
+                'price' => '99.00',
+                'period_type' => 'regular',
+                'period' => 'years',
+                'period_count' => '1',
+                'recurring' => '1',
+                'type' => 'recurring'
+            ],
+            [
+                'title' => 'Elite Membership – Monthly',
+                'price' => '19.00',
+                'period_type' => 'regular',
+                'period' => 'months',
+                'period_count' => '1',
+                'recurring' => '1',
+                'type' => 'recurring'
+            ]
+        ];
+
+        if (!$dry_run && !$confirm) {
+            \WP_CLI::confirm('This will create ' . count($memberships) . ' demo membership products. Continue?');
+        }
+
+        \WP_CLI::line('Creating demo membership products...');
+        \WP_CLI::line('');
+
+        $created_count = 0;
+        $skipped_count = 0;
+
+        foreach ($memberships as $membership) {
+            $title = $membership['title'];
+            
+            // Check if membership already exists
+            $existing = get_posts([
+                'post_type' => 'membercoreproduct',
+                'title' => $title,
+                'post_status' => 'any',
+                'numberposts' => 1
+            ]);
+
+            if (!empty($existing)) {
+                \WP_CLI::warning("Membership '{$title}' already exists (ID: {$existing[0]->ID}). Skipping.");
+                $skipped_count++;
+                continue;
+            }
+
+            if ($dry_run) {
+                \WP_CLI::line("Would create: {$title} (\${$membership['price']}" . 
+                    ($membership['type'] === 'recurring' ? ' recurring' : ' one-time') . ')');
+                $created_count++;
+                continue;
+            }
+
+            // Create the post
+            $post_data = [
+                'post_type' => 'membercoreproduct',
+                'post_title' => $title,
+                'post_status' => 'publish',
+                'post_content' => "Demo membership: {$title}",
+            ];
+
+            $post_id = wp_insert_post($post_data);
+
+            if (is_wp_error($post_id)) {
+                \WP_CLI::error("Failed to create membership '{$title}': " . $post_id->get_error_message());
+                continue;
+            }
+
+            // Add meta fields
+            update_post_meta($post_id, '_meco_product_price', $membership['price']);
+
+            // Add recurring fields if applicable
+            if ($membership['type'] === 'recurring') {
+                update_post_meta($post_id, '_meco_product_period_type', $membership['period_type']);
+                update_post_meta($post_id, '_meco_product_period', $membership['period']);
+                update_post_meta($post_id, '_meco_product_period_count', $membership['period_count']);
+                update_post_meta($post_id, '_meco_product_recurring', $membership['recurring']);
+            }
+
+            \WP_CLI::success("Created: {$title} (ID: {$post_id}) - \${$membership['price']}");
+            $created_count++;
+        }
+
+        \WP_CLI::line('');
+        if ($dry_run) {
+            \WP_CLI::line("DRY RUN: Would create {$created_count} memberships.");
+        } else {
+            \WP_CLI::success("Created {$created_count} memberships" . 
+                ($skipped_count > 0 ? ", skipped {$skipped_count} existing." : '.'));
+        }
+    }
+
+    /**
      * List all available MemberCore commands
      *
      * ## EXAMPLES
@@ -117,9 +250,10 @@ class Base
         \WP_CLI::line('Available MemberCore CLI commands:');
         \WP_CLI::line('');
         \WP_CLI::line('Base commands (wp meco):');
-        \WP_CLI::line('  fresh     - Reset/truncate tables by prefix (supports --prefixes=meco,mcpd,mpcs,etc)');
-        \WP_CLI::line('  info      - Show system information');
-        \WP_CLI::line('  list      - Show this help');
+        \WP_CLI::line('  fresh               - Reset/truncate tables by prefix (supports --prefixes=meco,mcpd,mpcs,etc)');
+        \WP_CLI::line('  info                - Show system information');
+        \WP_CLI::line('  setup_memberships   - Create demo membership products');
+        \WP_CLI::line('  list                - Show this help');
         \WP_CLI::line('');
         \WP_CLI::line('Membership commands (wp meco membership):');
         \WP_CLI::line('  list      - List all memberships');

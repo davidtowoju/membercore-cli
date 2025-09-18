@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# MemberCore Daily Maintenance Script - Production Version
-# For: directories.today
+# MemberCore Daily Maintenance Script - Fresh Install Version
+# For: CaseProof Demo Site
 #
 # Usage:
 #   ./daily-maintenance.sh [--dry-run] [--verbose]
 
-# Configuration for directories.today
-WORDPRESS_PATH="/home/pluginette-bolbf/directories.today/public"
-LOG_DIR="/home/pluginette-bolbf/directories.today/public/wp-content/uploads/membercore-logs"
+# Configuration for CaseProof demo site
+WORDPRESS_PATH="/Users/elizabethtowoju/Sites/caseproof"
+LOG_DIR="/Users/elizabethtowoju/Sites/caseproof/wp-content/uploads/membercore-logs"
 LOG_FILE="$LOG_DIR/daily-maintenance-$(date +%Y-%m-%d).log"
 LOCK_FILE="/tmp/membercore-maintenance.lock"
 
@@ -83,225 +83,6 @@ run_wp_command() {
     fi
 }
 
-run_user_cleanup() {
-    local description="$1"
-    local critical="${2:-false}"
-    
-    log "Starting: $description"
-    
-    # Check if WP-CLI is working
-    if ! wp --version &>/dev/null; then
-        log_error "WP-CLI not found or not working"
-        return 1
-    fi
-    
-    # Check if WordPress is accessible
-    if ! wp --path="$WORDPRESS_PATH" core version &>/dev/null; then
-        log_error "WordPress not accessible at path: $WORDPRESS_PATH"
-        return 1
-    fi
-    
-    # Get list of users to delete (exclude admin user ID 1)
-    local users_to_delete
-    users_to_delete=$(wp --path="$WORDPRESS_PATH" user list --field=ID --exclude=1 2>&1)
-    local wp_exit_code=$?
-    
-    # Debug logging (only in verbose mode)
-    if [ "$VERBOSE" = true ]; then
-        local total_users=$(wp --path="$WORDPRESS_PATH" user list --format=count 2>&1)
-        log "Debug: Total users found: '$total_users'"
-        log "Debug: WP-CLI exit code: $wp_exit_code"
-    fi
-    
-    # Check if WP-CLI command failed
-    if [ $wp_exit_code -ne 0 ]; then
-        log_error "WP-CLI user list failed: $users_to_delete"
-        return 1
-    fi
-    
-    if [ -z "$users_to_delete" ]; then
-        log "No users to delete (only admin user exists)"
-        return 0
-    fi
-    
-    local user_count=$(echo "$users_to_delete" | wc -w)
-    log "Found $user_count users to delete (excluding admin ID=1)"
-    
-    if [ "$DRY_RUN" = true ]; then
-        log "DRY RUN MODE: Would delete $user_count users"
-        log "Sample user IDs to delete: $(echo $users_to_delete | head -n 1 | cut -d' ' -f1-10 | tr '\n' ' ')..."
-        log "Highest user ID: $(echo $users_to_delete | tr ' ' '\n' | sort -n | tail -1)"
-        log "Lowest user ID: $(echo $users_to_delete | tr ' ' '\n' | sort -n | head -1)"
-        log "DRY RUN: Would reassign all content to admin user (ID: 1)"
-        return 0
-    fi
-    
-    # WARNING: This is destructive - log it clearly
-    log "⚠️  WARNING: Deleting $user_count users and reassigning content to admin (ID: 1)"
-    
-    # Execute the deletion
-    if wp --path="$WORDPRESS_PATH" user delete $users_to_delete --reassign=1 --yes $QUIET_FLAG; then
-        log "✓ Completed: $description - Deleted $user_count users"
-        return 0
-    else
-        log_error "✗ Failed: $description"
-        if [ "$critical" = true ]; then
-            log_error "Critical command failed. Stopping execution."
-            exit 1
-        fi
-        return 1
-    fi
-}
-
-run_post_cleanup() {
-    local description="$1"
-    local critical="${2:-false}"
-    
-    log "Starting: $description"
-    
-    # Check if WP-CLI is working
-    if ! wp --version &>/dev/null; then
-        log_error "WP-CLI not found or not working"
-        return 1
-    fi
-    
-    # Get list of posts to delete (mc-directory and mcpd-profile post types)
-    local posts_to_delete
-    posts_to_delete=$(wp --path="$WORDPRESS_PATH" post list --post_type='mc-directory,mcpd-profile' --format=ids 2>&1)
-    local wp_exit_code=$?
-    
-    # Debug logging (only in verbose mode)
-    if [ "$VERBOSE" = true ]; then
-        local total_posts=$(wp --path="$WORDPRESS_PATH" post list --post_type='mc-directory,mcpd-profile' --format=count 2>&1)
-        log "Debug: Total posts found: '$total_posts'"
-        log "Debug: WP-CLI exit code: $wp_exit_code"
-    fi
-    
-    # Check if WP-CLI command failed
-    if [ $wp_exit_code -ne 0 ]; then
-        log_error "WP-CLI post list failed: $posts_to_delete"
-        return 1
-    fi
-    
-    if [ -z "$posts_to_delete" ]; then
-        log "No posts to delete (no mc-directory or mcpd-profile posts found)"
-        return 0
-    fi
-    
-    local post_count=$(echo "$posts_to_delete" | wc -w)
-    log "Found $post_count posts to delete (types: mc-directory, mcpd-profile)"
-    
-    if [ "$DRY_RUN" = true ]; then
-        log "DRY RUN MODE: Would delete $post_count posts"
-        log "Sample post IDs to delete: $(echo $posts_to_delete | head -n 1 | cut -d' ' -f1-10 | tr '\n' ' ')..."
-        if [ $post_count -gt 10 ]; then
-            log "...and $(($post_count - 10)) more posts"
-        fi
-        log "DRY RUN: Would permanently delete (--force) all listed posts"
-        return 0
-    fi
-    
-    # WARNING: This is destructive - log it clearly
-    log "⚠️  WARNING: Permanently deleting $post_count posts (mc-directory, mcpd-profile types)"
-    
-    # Execute the deletion
-    if wp --path="$WORDPRESS_PATH" post delete $posts_to_delete --force $QUIET_FLAG; then
-        log "✓ Completed: $description - Deleted $post_count posts"
-        return 0
-    else
-        log_error "✗ Failed: $description"
-        if [ "$critical" = true ]; then
-            log_error "Critical command failed. Stopping execution."
-            exit 1
-        fi
-        return 1
-    fi
-}
-
-run_option_cleanup() {
-    local description="$1"
-    local critical="${2:-false}"
-    local options="mcpd_community_profile_type_added mcpd_social_profile_emails_added mcpd_community_directory_added meco_options"
-    
-    log "Starting: $description"
-    
-    # Check if WP-CLI is working
-    if ! wp --version &>/dev/null; then
-        log_error "WP-CLI not found or not working"
-        return 1
-    fi
-    
-    if [ "$DRY_RUN" = true ]; then
-        log "DRY RUN MODE: Would delete options:"
-        for option in $options; do
-            log "  - Would delete option: $option"
-        done
-        return 0
-    fi
-    
-    # Delete each option
-    local deleted_count=0
-    for option in $options; do
-        log "Deleting option: $option"
-        if wp --path="$WORDPRESS_PATH" option delete $option $QUIET_FLAG 2>/dev/null; then
-            log "✓ Deleted option: $option"
-            ((deleted_count++))
-        else
-            log "⚠️  Option not found or already deleted: $option"
-        fi
-    done
-    
-    log "✓ Completed: $description - Processed $deleted_count options"
-    return 0
-}
-
-run_plugin_refresh() {
-    local description="$1"
-    local critical="${2:-false}"
-    local plugins="spatie-ray user-switching code-snippets membercore membercore-cli membercore-profiles-and-directories"
-    
-    log "Starting: $description"
-    
-    # Check if WP-CLI is working
-    if ! wp --version &>/dev/null; then
-        log_error "WP-CLI not found or not working"
-        return 1
-    fi
-    
-    if [ "$DRY_RUN" = true ]; then
-        log "DRY RUN MODE: Would deactivate and reactivate plugins:"
-        for plugin in $plugins; do
-            log "  - Would refresh plugin: $plugin"
-        done
-        return 0
-    fi
-    
-    # Deactivate plugins
-    log "Deactivating plugins: $plugins"
-    if wp --path="$WORDPRESS_PATH" plugin deactivate $plugins $QUIET_FLAG; then
-        log "✓ Plugins deactivated successfully"
-    else
-        log_error "Failed to deactivate some plugins (continuing anyway)"
-    fi
-    
-    # Small delay to ensure deactivation is processed
-    sleep 2
-    
-    # Reactivate plugins
-    log "Reactivating plugins: $plugins"
-    if wp --path="$WORDPRESS_PATH" plugin activate $plugins $QUIET_FLAG; then
-        log "✓ Completed: $description - Plugins refreshed successfully"
-        return 0
-    else
-        log_error "✗ Failed to reactivate some plugins"
-        if [ "$critical" = true ]; then
-            log_error "Critical command failed. Stopping execution."
-            exit 1
-        fi
-        return 1
-    fi
-}
-
 cleanup() {
     log "Cleaning up..."
     rm -f "$LOCK_FILE"
@@ -325,18 +106,15 @@ echo $$ > "$LOCK_FILE"
 # Start maintenance
 log "========================================="
 log "Starting MemberCore Daily Maintenance"
-log "Site: directories.today"
+log "Site: CaseProof Demo (caseproof.test)"
 log "Mode: $([ "$DRY_RUN" = true ] && echo 'DRY RUN' || echo 'LIVE')"
 log "========================================="
 
 # Debug: Check WordPress installation
 if [ ! -f "$WORDPRESS_PATH/wp-config.php" ]; then
     log_error "WordPress not found at $WORDPRESS_PATH"
-    log "Looking for wp-config.php in /home/pluginette-bolbf..."
-    find /home/pluginette-bolbf -name "wp-config.php" -type f 2>/dev/null | head -3 | while read path; do
-        log "Found WordPress at: $(dirname "$path")"
-    done
-    exit 1
+    log "Note: Database reset will create a new WordPress installation"
+    log "Continuing with fresh install process..."
 fi
 
 # Check WP-CLI
@@ -354,53 +132,83 @@ if [ "$VERBOSE" = true ]; then
 fi
 
 # Initialize counters
-TOTAL_COMMANDS=6  # Update this number when adding commands
+TOTAL_COMMANDS=11  # Update this number when adding commands
 COMPLETED_COMMANDS=0
 FAILED_COMMANDS=0
 
-# Command 1: User cleanup - DELETE ALL USERS EXCEPT ADMIN (ID=1) and reassign content
-# ⚠️  WARNING: This is a DESTRUCTIVE operation that removes all users except admin
-if run_user_cleanup "User Cleanup (Delete Non-Admin Users)" false; then
+# Command 1: Database Reset - Complete database reset
+# ⚠️  WARNING: This completely resets the database
+if run_wp_command "Database Reset" "db reset --yes" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
 fi
 
-# Command 2: MemberCore Fresh - Reset MemberCore data with specific prefixes
-# ⚠️  WARNING: This resets MemberCore database tables and data
-if run_wp_command "MemberCore Fresh Reset" "meco fresh --prefixes=meco,mcpd --confirm" false; then
+# Command 2: WordPress Fresh Install - Install WordPress with admin user
+if run_wp_command "WordPress Fresh Install" "core install --url=\"https://caseproof.test\" --title=\"CaseProof\" --admin_user=\"admin\" --admin_password=\"pass\" --admin_email=\"admin@example.test\"" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
 fi
 
-# Command 3: Post cleanup - DELETE posts with types mc-directory and mcpd-profile
-# ⚠️  WARNING: This permanently deletes directory and profile posts
-if run_post_cleanup "Post Cleanup (Delete Directories & Profiles)" false; then
+# Command 3: Set Required Options - Set MCPD options to prevent setup wizard
+if run_wp_command "Set MCPD Options" "option update mcpd_community_profile_type_added true" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
 fi
 
-# Command 4: Option cleanup - Delete specific WordPress options
-# This cleans up specific MemberCore and MCPD options before plugin refresh
-if run_option_cleanup "Option Cleanup (Delete MCPD/MemberCore Options)" false; then
+# Command 4: Set Community Directory Option
+if run_wp_command "Set Community Directory Option" "option update mcpd_community_directory_added true" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
 fi
 
-# Command 5: Plugin refresh - Deactivate and reactivate key plugins
-# This refreshes plugins and clears any cached states
-if run_plugin_refresh "Plugin Refresh (Deactivate/Reactivate)" false; then
+# Command 5: Activate Theme - Activate Frost theme
+if run_wp_command "Activate Frost Theme" "theme activate frost" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
 fi
 
-# Command 6: Bulk create users from JSON with avatars and memberships
-# This populates the site with demo users after the cleanup in random order
-if run_wp_command "Bulk Create Users from JSON" "meco user bulk-create-from-json --upload-avatars --skip-existing --memberships=11,12,13,14 --membership-probability=75 --randomize --confirm" false; then
+# Command 6: Activate Plugins - Activate required plugins
+if run_wp_command "Activate Plugins" "plugin activate wordpress-importer membercore membercore-cli membercore-profiles-and-directories" false; then
+    ((COMPLETED_COMMANDS++))
+else
+    ((FAILED_COMMANDS++))
+fi
+
+# Command 7: Clear Posts Table - Truncate posts for clean import
+if run_wp_command "Clear Posts Table" "db query \"TRUNCATE TABLE wp_posts;\"" false; then
+    ((COMPLETED_COMMANDS++))
+else
+    ((FAILED_COMMANDS++))
+fi
+
+# Command 8: Import Demo Data - Import directories and demo content
+if run_wp_command "Import Demo Data" "import app/assets/directories.xml --authors=create" false; then
+    ((COMPLETED_COMMANDS++))
+else
+    ((FAILED_COMMANDS++))
+fi
+
+# Command 9: Update URLs - Search and replace demo URLs with live URLs
+if run_wp_command "Update Site URLs" "search-replace 'directories.test' 'directories.today'" false; then
+    ((COMPLETED_COMMANDS++))
+else
+    ((FAILED_COMMANDS++))
+fi
+
+# Command 10: Create Demo Users - Bulk create users from JSON with avatars and memberships
+if run_wp_command "Create Demo Users" "meco user bulk-create-from-json --upload-avatars --skip-existing --memberships=14,15,16,17 --membership-probability=75 --randomize --confirm" false; then
+    ((COMPLETED_COMMANDS++))
+else
+    ((FAILED_COMMANDS++))
+fi
+
+# Command 11: Sync Directories - Trigger directory sync action
+if run_wp_command "Sync Directories" "eval 'do_action(\"mcpd_sync_directories\");'" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
