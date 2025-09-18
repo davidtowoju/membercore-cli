@@ -1,6 +1,9 @@
 #!/bin/bash
 
 # MemberCore Daily Maintenance Script - Fresh Install Version
+# Ensure we're using bash and set up environment for cron compatibility
+export PATH="/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:$PATH"
+cd "$(dirname "$0")"
 # For: directories.today
 #
 # Usage:
@@ -163,6 +166,12 @@ if [ -z "$WP_CLI" ]; then
 fi
 
 log "Using WP-CLI at: $WP_CLI"
+
+# Debug environment information (helpful for cron troubleshooting)
+log "Current user: $(whoami)"
+log "Current working directory: $(pwd)"
+log "PATH: $PATH"
+log "SHELL: $SHELL"
 
 if [ "$VERBOSE" = true ]; then
     log "WordPress path: $WORDPRESS_PATH"
