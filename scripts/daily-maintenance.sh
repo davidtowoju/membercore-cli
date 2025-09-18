@@ -145,7 +145,7 @@ else
 fi
 
 # Command 2: WordPress Fresh Install - Install WordPress with admin user
-if run_wp_command "WordPress Fresh Install" "core install --url=\"https://directories.today\" --title=\"directories\" --admin_user=\"admin\" --admin_password=\"pass\" --admin_email=\"admin@example.test\"" false; then
+if run_wp_command "WordPress Fresh Install" "core install --url=\"https://directories.test\" --title=\"directories\" --admin_user=\"admin\" --admin_password=\"pass\" --admin_email=\"admin@example.test\"" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
@@ -194,7 +194,7 @@ else
 fi
 
 # Command 9: Update URLs - Search and replace demo URLs with live URLs
-if run_wp_command "Update Site URLs" "search-replace 'directories.test' 'directories.today'" false; then
+if run_wp_command "Update Site URLs" "search-replace 'directories.test' 'directories.test'" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
