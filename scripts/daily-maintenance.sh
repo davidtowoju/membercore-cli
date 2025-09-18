@@ -180,7 +180,10 @@ else
 fi
 
 # Command 7: Clear Posts Table - Truncate posts for clean import
-if run_wp_command "Clear Posts Table" "db cli --execute=\"SET FOREIGN_KEY_CHECKS=0; TRUNCATE TABLE \$(wp db prefix)posts; SET FOREIGN_KEY_CHECKS=1;\"" false; then
+# Get the database prefix first
+DB_PREFIX=$(wp --path="$WORDPRESS_PATH" db prefix)
+TRUNCATE_SQL="SET FOREIGN_KEY_CHECKS=0; TRUNCATE TABLE ${DB_PREFIX}posts; SET FOREIGN_KEY_CHECKS=1;"
+if run_wp_command "Clear Posts Table" "db cli --execute='$TRUNCATE_SQL'" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
