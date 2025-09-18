@@ -180,13 +180,19 @@ else
 fi
 
 # Command 7: Clear Posts Table - Truncate posts for clean import
-# Get the database prefix first
-DB_PREFIX=$(wp --path="$WORDPRESS_PATH" db prefix)
-TRUNCATE_SQL="SET FOREIGN_KEY_CHECKS=0; TRUNCATE TABLE ${DB_PREFIX}posts; SET FOREIGN_KEY_CHECKS=1;"
-if run_wp_command "Clear Posts Table" "db cli --execute='$TRUNCATE_SQL'" false; then
-    ((COMPLETED_COMMANDS++))
+# Execute SQL directly without going through the wrapper function
+log "Starting: Clear Posts Table"
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN MODE: Would truncate posts table"
 else
-    ((FAILED_COMMANDS++))
+    DB_PREFIX=$(wp --path="$WORDPRESS_PATH" db prefix)
+    if wp --path="$WORDPRESS_PATH" db cli --execute="SET FOREIGN_KEY_CHECKS=0; TRUNCATE TABLE ${DB_PREFIX}posts; SET FOREIGN_KEY_CHECKS=1;" $QUIET_FLAG; then
+        log "✓ Completed: Clear Posts Table"
+        ((COMPLETED_COMMANDS++))
+    else
+        log_error "✗ Failed: Clear Posts Table"
+        ((FAILED_COMMANDS++))
+    fi
 fi
 
 # Command 8: Import Demo Data - Import directories and demo content
