@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # MemberCore Daily Maintenance Script - Fresh Install Version
-# For: CaseProof Demo Site
+# For: directories.today
 #
 # Usage:
 #   ./daily-maintenance.sh [--dry-run] [--verbose]
 
-# Configuration for CaseProof demo site
-WORDPRESS_PATH="/Users/elizabethtowoju/Sites/caseproof"
-LOG_DIR="/Users/elizabethtowoju/Sites/caseproof/wp-content/uploads/membercore-logs"
+# Configuration for directories.today
+WORDPRESS_PATH="/home/pluginette-bolbf/directories.today/public"
+LOG_DIR="/home/pluginette-bolbf/directories.today/public/wp-content/uploads/membercore-logs"
 LOG_FILE="$LOG_DIR/daily-maintenance-$(date +%Y-%m-%d).log"
 LOCK_FILE="/tmp/membercore-maintenance.lock"
 
@@ -106,7 +106,7 @@ echo $$ > "$LOCK_FILE"
 # Start maintenance
 log "========================================="
 log "Starting MemberCore Daily Maintenance"
-log "Site: CaseProof Demo (caseproof.test)"
+log "Site: directories (directories.today)"
 log "Mode: $([ "$DRY_RUN" = true ] && echo 'DRY RUN' || echo 'LIVE')"
 log "========================================="
 
@@ -145,7 +145,7 @@ else
 fi
 
 # Command 2: WordPress Fresh Install - Install WordPress with admin user
-if run_wp_command "WordPress Fresh Install" "core install --url=\"https://caseproof.test\" --title=\"CaseProof\" --admin_user=\"admin\" --admin_password=\"pass\" --admin_email=\"admin@example.test\"" false; then
+if run_wp_command "WordPress Fresh Install" "core install --url=\"https://directories.today\" --title=\"directories\" --admin_user=\"admin\" --admin_password=\"pass\" --admin_email=\"admin@example.test\"" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
