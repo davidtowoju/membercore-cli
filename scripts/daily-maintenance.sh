@@ -1,9 +1,6 @@
 #!/bin/bash
 
 # MemberCore Daily Maintenance Script - Fresh Install Version
-# Ensure we're using bash and set up environment for cron compatibility
-export PATH="/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:$PATH"
-cd "$(dirname "$0")"
 # For: directories.today
 #
 # Usage:
@@ -167,12 +164,6 @@ fi
 
 log "Using WP-CLI at: $WP_CLI"
 
-# Debug environment information (helpful for cron troubleshooting)
-log "Current user: $(whoami)"
-log "Current working directory: $(pwd)"
-log "PATH: $PATH"
-log "SHELL: $SHELL"
-
 if [ "$VERBOSE" = true ]; then
     log "WordPress path: $WORDPRESS_PATH"
     log "WP-CLI version: $("$WP_CLI" --version 2>/dev/null || echo 'Not found')"
@@ -216,7 +207,7 @@ fi
 
 # Command 4: Update URLs - Search and replace demo URLs with environment URLs
 REPLACE_TO_URL=$(echo "$SITE_URL" | sed 's|https://||')
-if run_wp_command "Update Site URLs" "search-replace directories.test $REPLACE_TO_URL" false; then
+if run_wp_command "Update Site URLs" "search-replace directories.test $REPLACE_TO_URL --all-tables" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
