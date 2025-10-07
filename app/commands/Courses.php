@@ -28,7 +28,7 @@ class Courses {
 	 * ---
 	 */
 	function create_courses( $args, $assoc_args ) {
-		list( $count ) = $args;
+		$count = isset( $assoc_args['count'] ) ? (int) $assoc_args['count'] : 5;
 
 		for ( $i = 1; $i <= $count; $i++ ) {
 

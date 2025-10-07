@@ -49,7 +49,6 @@ if (!defined('WP_CLI') || !WP_CLI) {
  * Initialize MemberCore CLI commands
  */
 add_action('plugins_loaded', function() {
-    
     // Command configuration
     $commands = [
         [
@@ -91,7 +90,7 @@ add_action('plugins_loaded', function() {
             'slug'       => 'mpch',
             'class'      => 'Coaching',
             'namespace'  => 'membercore\\cli\\commands',
-            'dependency' => 'memberpress\\coachkit\\models\\Program',
+            'dependency' => 'membercore\\coachkit\\models\\Program',
             'description' => 'MemberCore Coaching management commands',
         ],
         [
