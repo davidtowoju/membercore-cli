@@ -170,11 +170,28 @@ if [ "$VERBOSE" = true ]; then
 fi
 
 # Initialize counters
-TOTAL_COMMANDS=5  # Update this number when adding commands
+TOTAL_COMMANDS=6  # Update this number when adding commands
 COMPLETED_COMMANDS=0
 FAILED_COMMANDS=0
 
-# Command 1: Database Reset - Complete database reset
+# Command 1: Clean Uploads Directory - Remove all existing uploads
+log "Starting: Clean Uploads Directory"
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN MODE: Would remove all files from $WORDPRESS_PATH/wp-content/uploads"
+    ((COMPLETED_COMMANDS++))
+else
+    if [ -d "$WORDPRESS_PATH/wp-content/uploads" ]; then
+        # Remove all contents of uploads directory
+        rm -rf "$WORDPRESS_PATH/wp-content/uploads"/*
+        log "✓ Completed: Clean Uploads Directory"
+        ((COMPLETED_COMMANDS++))
+    else
+        log "✓ Completed: Clean Uploads Directory (directory doesn't exist)"
+        ((COMPLETED_COMMANDS++))
+    fi
+fi
+
+# Command 2: Database Reset - Complete database reset
 # ⚠️  WARNING: This completely resets the database
 if run_wp_command "Database Reset" "db reset --yes" false; then
     ((COMPLETED_COMMANDS++))
@@ -182,14 +199,14 @@ else
     ((FAILED_COMMANDS++))
 fi
 
-# Command 2: WordPress Fresh Install - Install WordPress with admin user
+# Command 3: WordPress Fresh Install - Install WordPress with admin user
 if run_wp_command "WordPress Fresh Install" "core install --url=$SITE_URL --title=directories --admin_user=admin --admin_password=pass --admin_email=$ADMIN_EMAIL" false; then
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
 fi
 
-# Command 3: Import Database Tables - Import user tables from SQL dump
+# Command 4: Import Database Tables - Import user tables from SQL dump
 TABLES_SQL="$WORDPRESS_PATH/wp-content/plugins/membercore-cli/app/assets/tables.sql"
 log "Starting: Import Database Tables"
 if [ "$DRY_RUN" = true ]; then
@@ -205,7 +222,7 @@ else
     fi
 fi
 
-# Command 4: Update URLs - Search and replace demo URLs with environment URLs
+# Command 5: Update URLs - Search and replace demo URLs with environment URLs
 REPLACE_TO_URL=$(echo "$SITE_URL" | sed 's|https://||')
 if run_wp_command "Update Site URLs" "search-replace directories.test $REPLACE_TO_URL --all-tables" false; then
     ((COMPLETED_COMMANDS++))
@@ -213,7 +230,7 @@ else
     ((FAILED_COMMANDS++))
 fi
 
-# Command 5: Import Profile Images - Copy avatar images to uploads directory
+# Command 6: Import Profile Images - Copy avatar images to uploads directory
 AVATARS_SOURCE="$WORDPRESS_PATH/wp-content/plugins/membercore-cli/app/assets/avatars"
 UPLOADS_DIR="$WORDPRESS_PATH/wp-content/uploads"
 TARGET_YEAR="2025"
@@ -231,18 +248,48 @@ else
     
     # Copy all avatar images to uploads directory
     if [ -d "$AVATARS_SOURCE" ]; then
-        # Copy files and rename them with user numbers
-        counter=1
-        for file in "$AVATARS_SOURCE"/*.jpg; do
-            if [ -f "$file" ]; then
-                # Extract name from filename (remove .jpg extension)
-                basename_file=$(basename "$file" .jpg)
-                # Create new filename with counter
-                new_filename="${basename_file}_${counter}.jpg"
-                cp "$file" "$TARGET_DIR/$new_filename"
-                ((counter++))
-            fi
-        done
+        # Get user IDs and filenames from database to create proper mapping
+        log "Extracting user ID mappings from database..."
+        
+        # Extract user ID mappings from the database
+        # This creates a mapping of name patterns to user IDs
+        USER_MAPPINGS=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images WHERE url LIKE '%directories.test%' ORDER BY user_id" --format=json 2>/dev/null)
+        
+        if [ $? -eq 0 ] && [ -n "$USER_MAPPINGS" ]; then
+            # Process each mapping
+            echo "$USER_MAPPINGS" | jq -r '.[] | "\(.user_id)|\(.url)"' | while IFS='|' read -r user_id url; do
+                # Extract filename from URL
+                filename=$(basename "$url")
+                # Extract name part (everything before the underscore and number)
+                name_part=$(echo "$filename" | sed 's/_[0-9]*\.jpg$//')
+                
+                # Find matching file in avatars directory
+                source_file="$AVATARS_SOURCE/${name_part}.jpg"
+                
+                if [ -f "$source_file" ]; then
+                    # Copy with the correct user ID (always overwrite)
+                    cp "$source_file" "$TARGET_DIR/$filename"
+                    log "Copied: $name_part -> $filename (User ID: $user_id)"
+                else
+                    log "Warning: Source file not found: $source_file"
+                fi
+            done
+        else
+            log "Warning: Could not extract user mappings from database, falling back to sequential numbering"
+            # Fallback to sequential numbering if database query fails
+            counter=1
+            for file in "$AVATARS_SOURCE"/*.jpg; do
+                if [ -f "$file" ]; then
+                    basename_file=$(basename "$file" .jpg)
+                    new_filename="${basename_file}_${counter}.jpg"
+                    
+                    # Copy file (always overwrite)
+                    cp "$file" "$TARGET_DIR/$new_filename"
+                    log "Copied: $basename_file -> $new_filename"
+                    ((counter++))
+                fi
+            done
+        fi
         
         # Update database URLs to point to the new local files
         NEW_BASE_URL="$SITE_URL/wp-content/uploads/$TARGET_YEAR/$TARGET_MONTH"
