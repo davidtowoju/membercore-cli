@@ -263,20 +263,29 @@ if run_wp_command "Update Site URLs" "search-replace directories.test $REPLACE_T
             # Get user IDs and filenames from database to create proper mapping
             log "Extracting user ID mappings from database..."
             
-            # Execute the query directly and capture output
-            USER_MAPPINGS=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images WHERE url LIKE '%directories.today%' ORDER BY user_id" --format=json 2>/dev/null)
+            # Try without JSON format first to see if that's the issue
+            log "Testing database query without JSON format..."
+            TEST_QUERY=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images WHERE url LIKE '%directories.today%' ORDER BY user_id LIMIT 3" 2>/dev/null)
+            log "Test query result: $TEST_QUERY"
+            
+            # Execute the query without JSON format and parse manually
+            QUERY_RESULT=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images WHERE url LIKE '%directories.today%' ORDER BY user_id" 2>/dev/null)
             QUERY_EXIT_CODE=$?
             
             log "Database query exit code: $QUERY_EXIT_CODE"
-            log "Query result length: ${#USER_MAPPINGS}"
+            log "Query result length: ${#QUERY_RESULT}"
             
             if [ "$VERBOSE" = true ]; then
-                log "Query result: $USER_MAPPINGS"
+                log "Query result: $QUERY_RESULT"
             fi
             
-            if [ "$QUERY_EXIT_CODE" -eq 0 ] && [ -n "$USER_MAPPINGS" ]; then
-                # Process each mapping
-                echo "$USER_MAPPINGS" | jq -r '.[] | "\(.user_id)|\(.url)"' | while IFS='|' read -r user_id url; do
+            if [ "$QUERY_EXIT_CODE" -eq 0 ] && [ -n "$QUERY_RESULT" ]; then
+                # Process each mapping - parse the table format
+                echo "$QUERY_RESULT" | tail -n +2 | while IFS=$'\t' read -r user_id url; do
+                    # Skip empty lines and header
+                    if [ -z "$user_id" ] || [ "$user_id" = "user_id" ]; then
+                        continue
+                    fi
                     # Extract filename from URL
                     filename=$(basename "$url")
                     # Extract name part (everything before the underscore and number)
