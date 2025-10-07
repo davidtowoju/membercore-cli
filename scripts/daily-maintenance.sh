@@ -253,7 +253,7 @@ else
         
         # Extract user ID mappings from the database
         # This creates a mapping of name patterns to user IDs
-        USER_MAPPINGS=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images WHERE url LIKE '%directories.test%' ORDER BY user_id" --format=json 2>/dev/null)
+        USER_MAPPINGS=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images WHERE url LIKE '%directories.today%' ORDER BY user_id" --format=json 2>/dev/null)
         
         if [ $? -eq 0 ] && [ -n "$USER_MAPPINGS" ]; then
             # Process each mapping
