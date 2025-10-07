@@ -291,15 +291,40 @@ if run_wp_command "Update Site URLs" "search-replace directories.test $REPLACE_T
                     # Extract name part (everything before the underscore and number)
                     name_part=$(echo "$filename" | sed 's/_[0-9]*\.jpg$//')
                     
-                    # Find matching file in avatars directory
-                    source_file="$AVATARS_SOURCE/${name_part}.jpg"
+                    # Try multiple possible source file names
+                    source_file=""
                     
-                    if [ -f "$source_file" ]; then
+                    # Replace hyphens with spaces for matching
+                    name_with_spaces="${name_part//-/ }"
+                    
+                    # Try exact match first
+                    if [ -f "$AVATARS_SOURCE/${name_part}.jpg" ]; then
+                        source_file="$AVATARS_SOURCE/${name_part}.jpg"
+                    # Try with spaces instead of hyphens
+                    elif [ -f "$AVATARS_SOURCE/${name_with_spaces}.jpg" ]; then
+                        source_file="$AVATARS_SOURCE/${name_with_spaces}.jpg"
+                    # Try finding a fuzzy match
+                    else
+                        for file in "$AVATARS_SOURCE"/*.jpg; do
+                            if [ -f "$file" ]; then
+                                basename_file=$(basename "$file" .jpg)
+                                # Normalize both names for comparison (replace spaces and hyphens)
+                                normalized_base="${basename_file//[ -]/}"
+                                normalized_part="${name_part//[-]/}"
+                                if [[ "${normalized_base,,}" == "${normalized_part,,}" ]]; then
+                                    source_file="$file"
+                                    break
+                                fi
+                            fi
+                        done
+                    fi
+                    
+                    if [ -n "$source_file" ] && [ -f "$source_file" ]; then
                         # Copy with the correct user ID (always overwrite)
                         cp "$source_file" "$TARGET_DIR/$filename"
-                        log "Copied: $name_part -> $filename (User ID: $user_id)"
+                        log "Copied: $(basename "$source_file") -> $filename (User ID: $user_id)"
                     else
-                        log "Warning: Source file not found: $source_file"
+                        log "Warning: Source file not found for: $name_part (tried: $AVATARS_SOURCE/${name_part}.jpg)"
                     fi
                 done
                 
