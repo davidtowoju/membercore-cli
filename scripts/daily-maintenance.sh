@@ -308,8 +308,8 @@ if run_wp_command "Update Site URLs" "search-replace directories.test $REPLACE_T
                         for file in "$AVATARS_SOURCE"/*.jpg; do
                             if [ -f "$file" ]; then
                                 basename_file=$(basename "$file" .jpg)
-                                # Normalize both names for comparison (replace spaces and hyphens)
-                                normalized_base="${basename_file//[ -]/}"
+                                # Normalize both names for comparison (replace spaces, hyphens, and apostrophes)
+                                normalized_base="${basename_file//[ -\']/}"
                                 normalized_part="${name_part//[-]/}"
                                 if [[ "${normalized_base,,}" == "${normalized_part,,}" ]]; then
                                     source_file="$file"
