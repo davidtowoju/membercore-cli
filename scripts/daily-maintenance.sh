@@ -215,6 +215,17 @@ if [ "$DRY_RUN" = true ]; then
 else
     if "$WP_CLI" --path="$WORDPRESS_PATH" db import "$TABLES_SQL" $QUIET_FLAG; then
         log "✓ Completed: Import Database Tables"
+        
+        # Debug: Check if data was actually imported
+        log "Checking imported data..."
+        RECORD_COUNT=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT COUNT(*) FROM wp_mcpd_profile_images" 2>/dev/null)
+        log "Profile images count: $RECORD_COUNT"
+        
+        if [ "$VERBOSE" = true ]; then
+            SAMPLE_DATA=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images LIMIT 3" --format=json 2>/dev/null)
+            log "Sample data: $SAMPLE_DATA"
+        fi
+        
         ((COMPLETED_COMMANDS++))
     else
         log_error "✗ Failed: Import Database Tables"
@@ -226,106 +237,92 @@ fi
 REPLACE_TO_URL=$(echo "$SITE_URL" | sed 's|https://||')
 if run_wp_command "Update Site URLs" "search-replace directories.test $REPLACE_TO_URL --all-tables" false; then
     ((COMPLETED_COMMANDS++))
-else
-    ((FAILED_COMMANDS++))
-fi
-
-# Command 6: Import Profile Images - Copy avatar images to uploads directory
-AVATARS_SOURCE="$WORDPRESS_PATH/wp-content/plugins/membercore-cli/app/assets/avatars"
-UPLOADS_DIR="$WORDPRESS_PATH/wp-content/uploads"
-TARGET_YEAR="2025"
-TARGET_MONTH="09"
-TARGET_DIR="$UPLOADS_DIR/$TARGET_YEAR/$TARGET_MONTH"
-
-log "Starting: Import Profile Images"
-
-if [ "$DRY_RUN" = true ]; then
-    log "DRY RUN MODE: Would copy avatar images from $AVATARS_SOURCE to $TARGET_DIR"
-    ((COMPLETED_COMMANDS++))
-else
-    # Create target directory if it doesn't exist
-    mkdir -p "$TARGET_DIR"
     
-    # Copy all avatar images to uploads directory
-    if [ -d "$AVATARS_SOURCE" ]; then
-        # Get user IDs and filenames from database to create proper mapping
-        log "Extracting user ID mappings from database..."
+    # Small delay to ensure database is ready
+    log "Waiting for database to be ready..."
+    sleep 2
+    
+    # Command 6: Import Profile Images - Copy avatar images to uploads directory
+    AVATARS_SOURCE="$WORDPRESS_PATH/wp-content/plugins/membercore-cli/app/assets/avatars"
+    UPLOADS_DIR="$WORDPRESS_PATH/wp-content/uploads"
+    TARGET_YEAR="2025"
+    TARGET_MONTH="09"
+    TARGET_DIR="$UPLOADS_DIR/$TARGET_YEAR/$TARGET_MONTH"
+
+    log "Starting: Import Profile Images"
+
+    if [ "$DRY_RUN" = true ]; then
+        log "DRY RUN MODE: Would copy avatar images from $AVATARS_SOURCE to $TARGET_DIR"
+        ((COMPLETED_COMMANDS++))
+    else
+        # Create target directory if it doesn't exist
+        mkdir -p "$TARGET_DIR"
         
-        # Extract user ID mappings from the database
-        # This creates a mapping of name patterns to user IDs
-        log "Running database query to extract user mappings..."
-        
-        # First, let's check what's actually in the database
-        log "Checking database table structure..."
-        TABLE_CHECK=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SHOW TABLES LIKE 'wp_mcpd_profile_images'" 2>/dev/null)
-        log "Table exists check: $TABLE_CHECK"
-        
-        # Check a few sample records to see what URLs are actually there
-        SAMPLE_RECORDS=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images LIMIT 3" --format=json 2>/dev/null)
-        log "Sample records: $SAMPLE_RECORDS"
-        
-        # Execute the query directly and capture output
-        USER_MAPPINGS=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images WHERE url LIKE '%directories.today%' ORDER BY user_id" --format=json 2>/dev/null)
-        QUERY_EXIT_CODE=$?
-        
-        log "Database query exit code: $QUERY_EXIT_CODE"
-        log "Query result length: ${#USER_MAPPINGS}"
-        
-        if [ "$VERBOSE" = true ]; then
-            log "Query result: $USER_MAPPINGS"
-        fi
-        
-        if [ "$QUERY_EXIT_CODE" -eq 0 ] && [ -n "$USER_MAPPINGS" ]; then
-            # Process each mapping
-            echo "$USER_MAPPINGS" | jq -r '.[] | "\(.user_id)|\(.url)"' | while IFS='|' read -r user_id url; do
-                # Extract filename from URL
-                filename=$(basename "$url")
-                # Extract name part (everything before the underscore and number)
-                name_part=$(echo "$filename" | sed 's/_[0-9]*\.jpg$//')
-                
-                # Find matching file in avatars directory
-                source_file="$AVATARS_SOURCE/${name_part}.jpg"
-                
-                if [ -f "$source_file" ]; then
-                    # Copy with the correct user ID (always overwrite)
-                    cp "$source_file" "$TARGET_DIR/$filename"
-                    log "Copied: $name_part -> $filename (User ID: $user_id)"
-                else
-                    log "Warning: Source file not found: $source_file"
-                fi
-            done
-        else
-            log "Warning: Could not extract user mappings from database, falling back to sequential numbering"
-            # Fallback to sequential numbering if database query fails
-            counter=1
-            for file in "$AVATARS_SOURCE"/*.jpg; do
-                if [ -f "$file" ]; then
-                    basename_file=$(basename "$file" .jpg)
-                    new_filename="${basename_file}_${counter}.jpg"
+        # Copy all avatar images to uploads directory
+        if [ -d "$AVATARS_SOURCE" ]; then
+            # Get user IDs and filenames from database to create proper mapping
+            log "Extracting user ID mappings from database..."
+            
+            # Execute the query directly and capture output
+            USER_MAPPINGS=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images WHERE url LIKE '%directories.today%' ORDER BY user_id" --format=json 2>/dev/null)
+            QUERY_EXIT_CODE=$?
+            
+            log "Database query exit code: $QUERY_EXIT_CODE"
+            log "Query result length: ${#USER_MAPPINGS}"
+            
+            if [ "$VERBOSE" = true ]; then
+                log "Query result: $USER_MAPPINGS"
+            fi
+            
+            if [ "$QUERY_EXIT_CODE" -eq 0 ] && [ -n "$USER_MAPPINGS" ]; then
+                # Process each mapping
+                echo "$USER_MAPPINGS" | jq -r '.[] | "\(.user_id)|\(.url)"' | while IFS='|' read -r user_id url; do
+                    # Extract filename from URL
+                    filename=$(basename "$url")
+                    # Extract name part (everything before the underscore and number)
+                    name_part=$(echo "$filename" | sed 's/_[0-9]*\.jpg$//')
                     
-                    # Copy file (always overwrite)
-                    cp "$file" "$TARGET_DIR/$new_filename"
-                    log "Copied: $basename_file -> $new_filename"
-                    ((counter++))
-                fi
-            done
-        fi
-        
-        # Update database URLs to point to the new local files
-        NEW_BASE_URL="$SITE_URL/wp-content/uploads/$TARGET_YEAR/$TARGET_MONTH"
-        OLD_BASE_URL="https://directories.test/wp-content/uploads/$TARGET_YEAR/$TARGET_MONTH"
-        
-        if "$WP_CLI" --path="$WORDPRESS_PATH" search-replace "$OLD_BASE_URL" "$NEW_BASE_URL" --all-tables $QUIET_FLAG; then
-            log "✓ Completed: Import Profile Images"
-            ((COMPLETED_COMMANDS++))
+                    # Find matching file in avatars directory
+                    source_file="$AVATARS_SOURCE/${name_part}.jpg"
+                    
+                    if [ -f "$source_file" ]; then
+                        # Copy with the correct user ID (always overwrite)
+                        cp "$source_file" "$TARGET_DIR/$filename"
+                        log "Copied: $name_part -> $filename (User ID: $user_id)"
+                    else
+                        log "Warning: Source file not found: $source_file"
+                    fi
+                done
+                
+                log "✓ Completed: Import Profile Images"
+                ((COMPLETED_COMMANDS++))
+            else
+                log "Warning: Could not extract user mappings from database, falling back to sequential numbering"
+                # Fallback to sequential numbering if database query fails
+                counter=1
+                for file in "$AVATARS_SOURCE"/*.jpg; do
+                    if [ -f "$file" ]; then
+                        basename_file=$(basename "$file" .jpg)
+                        new_filename="${basename_file}_${counter}.jpg"
+                        
+                        # Copy file (always overwrite)
+                        cp "$file" "$TARGET_DIR/$new_filename"
+                        log "Copied: $basename_file -> $new_filename"
+                        ((counter++))
+                    fi
+                done
+                
+                log "✓ Completed: Import Profile Images (fallback mode)"
+                ((COMPLETED_COMMANDS++))
+            fi
         else
-            log_error "✗ Failed: Import Profile Images"
+            log_error "✗ Failed: Avatar source directory not found at $AVATARS_SOURCE"
             ((FAILED_COMMANDS++))
         fi
-    else
-        log_error "✗ Failed: Avatar source directory not found at $AVATARS_SOURCE"
-        ((FAILED_COMMANDS++))
     fi
+else
+    log_error "✗ Failed: Update Site URLs - skipping image import"
+    ((FAILED_COMMANDS++))
 fi
 
 # Summary
