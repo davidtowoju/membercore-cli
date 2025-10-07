@@ -170,7 +170,7 @@ if [ "$VERBOSE" = true ]; then
 fi
 
 # Initialize counters
-TOTAL_COMMANDS=4  # Update this number when adding commands
+TOTAL_COMMANDS=5  # Update this number when adding commands
 COMPLETED_COMMANDS=0
 FAILED_COMMANDS=0
 
@@ -211,6 +211,54 @@ if run_wp_command "Update Site URLs" "search-replace directories.test $REPLACE_T
     ((COMPLETED_COMMANDS++))
 else
     ((FAILED_COMMANDS++))
+fi
+
+# Command 5: Import Profile Images - Copy avatar images to uploads directory
+AVATARS_SOURCE="$WORDPRESS_PATH/wp-content/plugins/membercore-cli/app/assets/avatars"
+UPLOADS_DIR="$WORDPRESS_PATH/wp-content/uploads"
+TARGET_YEAR="2025"
+TARGET_MONTH="09"
+TARGET_DIR="$UPLOADS_DIR/$TARGET_YEAR/$TARGET_MONTH"
+
+log "Starting: Import Profile Images"
+
+if [ "$DRY_RUN" = true ]; then
+    log "DRY RUN MODE: Would copy avatar images from $AVATARS_SOURCE to $TARGET_DIR"
+    ((COMPLETED_COMMANDS++))
+else
+    # Create target directory if it doesn't exist
+    mkdir -p "$TARGET_DIR"
+    
+    # Copy all avatar images to uploads directory
+    if [ -d "$AVATARS_SOURCE" ]; then
+        # Copy files and rename them with user numbers
+        counter=1
+        for file in "$AVATARS_SOURCE"/*.jpg; do
+            if [ -f "$file" ]; then
+                # Extract name from filename (remove .jpg extension)
+                basename_file=$(basename "$file" .jpg)
+                # Create new filename with counter
+                new_filename="${basename_file}_${counter}.jpg"
+                cp "$file" "$TARGET_DIR/$new_filename"
+                ((counter++))
+            fi
+        done
+        
+        # Update database URLs to point to the new local files
+        NEW_BASE_URL="$SITE_URL/wp-content/uploads/$TARGET_YEAR/$TARGET_MONTH"
+        OLD_BASE_URL="https://directories.test/wp-content/uploads/$TARGET_YEAR/$TARGET_MONTH"
+        
+        if "$WP_CLI" --path="$WORDPRESS_PATH" search-replace "$OLD_BASE_URL" "$NEW_BASE_URL" --all-tables $QUIET_FLAG; then
+            log "✓ Completed: Import Profile Images"
+            ((COMPLETED_COMMANDS++))
+        else
+            log_error "✗ Failed: Import Profile Images"
+            ((FAILED_COMMANDS++))
+        fi
+    else
+        log_error "✗ Failed: Avatar source directory not found at $AVATARS_SOURCE"
+        ((FAILED_COMMANDS++))
+    fi
 fi
 
 # Summary
