@@ -253,9 +253,18 @@ else
         
         # Extract user ID mappings from the database
         # This creates a mapping of name patterns to user IDs
+        log "Running database query to extract user mappings..."
         USER_MAPPINGS=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images WHERE url LIKE '%directories.today%' ORDER BY user_id" --format=json 2>/dev/null)
+        QUERY_EXIT_CODE=$?
         
-        if [ $? -eq 0 ] && [ -n "$USER_MAPPINGS" ]; then
+        log "Database query exit code: $QUERY_EXIT_CODE"
+        log "Query result length: ${#USER_MAPPINGS}"
+        
+        if [ "$VERBOSE" = true ]; then
+            log "Query result: $USER_MAPPINGS"
+        fi
+        
+        if [ "$QUERY_EXIT_CODE" -eq 0 ] && [ -n "$USER_MAPPINGS" ]; then
             # Process each mapping
             echo "$USER_MAPPINGS" | jq -r '.[] | "\(.user_id)|\(.url)"' | while IFS='|' read -r user_id url; do
                 # Extract filename from URL
