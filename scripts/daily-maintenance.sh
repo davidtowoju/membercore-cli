@@ -254,6 +254,8 @@ else
         # Extract user ID mappings from the database
         # This creates a mapping of name patterns to user IDs
         log "Running database query to extract user mappings..."
+        
+        # Execute the query directly and capture output
         USER_MAPPINGS=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images WHERE url LIKE '%directories.today%' ORDER BY user_id" --format=json 2>/dev/null)
         QUERY_EXIT_CODE=$?
         
