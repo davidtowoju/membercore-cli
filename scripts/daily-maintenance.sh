@@ -255,6 +255,15 @@ else
         # This creates a mapping of name patterns to user IDs
         log "Running database query to extract user mappings..."
         
+        # First, let's check what's actually in the database
+        log "Checking database table structure..."
+        TABLE_CHECK=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SHOW TABLES LIKE 'wp_mcpd_profile_images'" 2>/dev/null)
+        log "Table exists check: $TABLE_CHECK"
+        
+        # Check a few sample records to see what URLs are actually there
+        SAMPLE_RECORDS=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images LIMIT 3" --format=json 2>/dev/null)
+        log "Sample records: $SAMPLE_RECORDS"
+        
         # Execute the query directly and capture output
         USER_MAPPINGS=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images WHERE url LIKE '%directories.today%' ORDER BY user_id" --format=json 2>/dev/null)
         QUERY_EXIT_CODE=$?
