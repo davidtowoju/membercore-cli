@@ -774,6 +774,37 @@ class User extends Base
                                 }
                             }
                         }
+
+                        // Save city if provided
+                        if (!empty($user_data['city'])) {
+                            update_user_meta($user_id, 'meco-address-city', sanitize_text_field($user_data['city']));
+                        }
+
+                        // Save country if provided
+                        if (!empty($user_data['country'])) {
+                            update_user_meta($user_id, 'meco-address-country', sanitize_text_field($user_data['country']));
+                        }
+
+                        // Save bio if provided
+                        if (!empty($user_data['bio'])) {
+                            update_user_meta($user_id, 'description', sanitize_textarea_field($user_data['bio']));
+                        }
+
+                        // Save social media links if provided
+                        $social_fields = ['linkedin', 'facebook', 'twitter', 'bluesky', 'instagram', 'youtube', 'tiktok'];
+                        foreach ($social_fields as $field) {
+                            if (!empty($user_data[$field])) {
+                                update_user_meta($user_id, 'mcpd_' . $field, esc_url_raw($user_data[$field]));
+                            }
+                        }
+
+                        // Save website if provided
+                        if (!empty($user_data['website'])) {
+                            wp_update_user([
+                                'ID' => $user_id,
+                                'user_url' => esc_url_raw($user_data['website'])
+                            ]);
+                        }
                     }
                 }
 
@@ -797,6 +828,209 @@ class User extends Base
 
         // Display final statistics
         $this->show_creation_stats($stats, $dry_run);
+    }
+
+    /**
+     * Update existing users with profile data from JSON
+     *
+     * ## OPTIONS
+     *
+     * [--json-file=<path>]
+     * : Path to JSON file containing user data. Default: app/assets/users.json
+     *
+     * [--match-by=<field>]
+     * : Field to match users by. Options: username, email. Default: username
+     *
+     * [--upload-avatars]
+     * : Upload and set user avatars from the avatars directory
+     *
+     * [--dry-run]
+     * : Show what would be updated without actually updating users
+     *
+     * [--confirm]
+     * : Skip confirmation prompt
+     *
+     * ## EXAMPLES
+     *
+     *     wp meco user update-from-json
+     *     wp meco user update-from-json --match-by=email
+     *     wp meco user update-from-json --upload-avatars
+     *     wp meco user update-from-json --dry-run
+     *
+     * @when after_wp_load
+     * @alias update-from-json
+     */
+    public function update_from_json($args, $assoc_args)
+    {
+        // Determine JSON file path
+        $json_file = $assoc_args['json-file'] ?? dirname(dirname(__FILE__)) . '/assets/users.json';
+        
+        if (!file_exists($json_file)) {
+            $this->error("JSON file not found: {$json_file}");
+            return;
+        }
+
+        // Load and parse JSON
+        $json_content = file_get_contents($json_file);
+        $users_data = json_decode($json_content, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->error("Invalid JSON file: " . json_last_error_msg());
+            return;
+        }
+
+        if (empty($users_data)) {
+            $this->error("No user data found in JSON file.");
+            return;
+        }
+
+        // Parse arguments
+        $match_by = $assoc_args['match-by'] ?? 'username';
+        $upload_avatars = isset($assoc_args['upload-avatars']);
+        $dry_run = isset($assoc_args['dry-run']);
+        $skip_confirm = isset($assoc_args['confirm']);
+
+        // Validate match_by
+        if (!in_array($match_by, ['username', 'email'])) {
+            $this->error("Invalid match-by value. Must be 'username' or 'email'.");
+            return;
+        }
+
+        // Show summary
+        $this->log("Update Existing Users from JSON:");
+        $this->log("- JSON File: {$json_file}");
+        $this->log("- Users in JSON: " . count($users_data));
+        $this->log("- Match By: {$match_by}");
+        
+        if ($upload_avatars) {
+            $avatars_dir = dirname(dirname(__FILE__)) . '/assets/avatars';
+            if (!is_dir($avatars_dir)) {
+                $this->warning("Avatars directory not found: {$avatars_dir}. Avatar upload disabled.");
+                $upload_avatars = false;
+            } else {
+                $this->log("- Upload Avatars: Yes ({$avatars_dir})");
+            }
+        }
+        
+        if ($dry_run) {
+            $this->log("- DRY RUN: No users will be updated");
+        }
+
+        // Confirm unless dry run or --confirm flag is used
+        if (!$dry_run && !$skip_confirm) {
+            \WP_CLI::confirm("Are you sure you want to update user profile data for matching users?");
+        }
+
+        // Track statistics
+        $stats = [
+            'total' => count($users_data),
+            'updated' => 0,
+            'not_found' => 0,
+            'avatars_uploaded' => 0,
+            'start_time' => time(),
+            'errors' => []
+        ];
+
+        // Create progress bar
+        $progress = \WP_CLI\Utils\make_progress_bar("Updating users", count($users_data));
+
+        // Process each user
+        foreach ($users_data as $user_data) {
+            $identifier = $match_by === 'email' ? $user_data['email'] : $user_data['username'];
+            
+            // Find user
+            if ($match_by === 'email') {
+                $user = get_user_by('email', $user_data['email']);
+            } else {
+                $user = get_user_by('login', $user_data['username']);
+            }
+
+            if (!$user) {
+                $stats['not_found']++;
+                $progress->tick();
+                continue;
+            }
+
+            if (!$dry_run) {
+                $user_id = $user->ID;
+
+                // Save city if provided
+                if (!empty($user_data['city'])) {
+                    update_user_meta($user_id, 'meco-address-city', sanitize_text_field($user_data['city']));
+                }
+
+                // Save country if provided
+                if (!empty($user_data['country'])) {
+                    update_user_meta($user_id, 'meco-address-country', sanitize_text_field($user_data['country']));
+                }
+
+                // Save bio if provided
+                if (!empty($user_data['bio'])) {
+                    update_user_meta($user_id, 'description', sanitize_textarea_field($user_data['bio']));
+                }
+
+                // Save social media links if provided
+                $social_fields = ['linkedin', 'facebook', 'twitter', 'bluesky', 'instagram', 'youtube', 'tiktok'];
+                foreach ($social_fields as $field) {
+                    if (!empty($user_data[$field])) {
+                        update_user_meta($user_id, 'mcpd_' . $field, esc_url_raw($user_data[$field]));
+                    }
+                }
+
+                // Save website if provided
+                if (!empty($user_data['website'])) {
+                    wp_update_user([
+                        'ID' => $user_id,
+                        'user_url' => esc_url_raw($user_data['website'])
+                    ]);
+                }
+
+                // Upload avatar if specified and not already exists
+                if ($upload_avatars && !empty($user_data['avatar'])) {
+                    $avatar_path = dirname(dirname(__FILE__)) . '/assets/avatars/' . $user_data['avatar'];
+                    if (file_exists($avatar_path)) {
+                        // Check if user already has avatar
+                        $has_avatar = \membercore\profiles\models\ProfileImage::has_profile_photo($user_id);
+                        if (!$has_avatar) {
+                            if ($this->upload_user_avatar($user_id, $avatar_path)) {
+                                $stats['avatars_uploaded']++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            $stats['updated']++;
+            $progress->tick();
+        }
+
+        $progress->finish();
+
+        // Calculate execution time
+        $execution_time = time() - $stats['start_time'];
+        $minutes = floor($execution_time / 60);
+        $seconds = $execution_time % 60;
+
+        // Display final statistics
+        $this->log("\n" . str_repeat('=', 60));
+        $this->log("USER UPDATE COMPLETE");
+        $this->log(str_repeat('=', 60));
+        $this->log("Total Users in JSON: {$stats['total']}");
+        $this->log("Users Updated: {$stats['updated']}");
+        $this->log("Users Not Found: {$stats['not_found']}");
+        
+        if ($upload_avatars) {
+            $this->log("Avatars Uploaded: {$stats['avatars_uploaded']}");
+        }
+        
+        $this->log("Execution Time: {$minutes}m {$seconds}s");
+
+        // Final message
+        if ($dry_run) {
+            $this->success("DRY RUN: Would update {$stats['updated']} users!");
+        } else {
+            $this->success("Successfully updated {$stats['updated']} users!");
+        }
     }
 
     /**
