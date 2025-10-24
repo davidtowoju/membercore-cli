@@ -519,7 +519,7 @@ composer check-all
 - WordPress 5.0 or higher
 - WP-CLI 2.0 or higher
 - MemberCore plugin (active)
-- MemberCore Profiles & Directories plugin (for directory commands)
+- MemberCore Directory plugin (for directory commands)
 
 ## Support
 

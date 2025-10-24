@@ -218,11 +218,11 @@ else
         
         # Debug: Check if data was actually imported
         log "Checking imported data..."
-        RECORD_COUNT=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT COUNT(*) FROM wp_mcpd_profile_images" 2>/dev/null)
+        RECORD_COUNT=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT COUNT(*) FROM wp_mcdir_profile_images" 2>/dev/null)
         log "Profile images count: $RECORD_COUNT"
         
         if [ "$VERBOSE" = true ]; then
-            SAMPLE_DATA=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images LIMIT 3" --format=json 2>/dev/null)
+            SAMPLE_DATA=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcdir_profile_images LIMIT 3" --format=json 2>/dev/null)
             log "Sample data: $SAMPLE_DATA"
         fi
         
@@ -265,11 +265,11 @@ if run_wp_command "Update Site URLs" "search-replace directories.test $REPLACE_T
             
             # Try without JSON format first to see if that's the issue
             log "Testing database query without JSON format..."
-            TEST_QUERY=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images WHERE url LIKE '%directories.today%' ORDER BY user_id LIMIT 3" 2>/dev/null)
+            TEST_QUERY=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcdir_profile_images WHERE url LIKE '%directories.today%' ORDER BY user_id LIMIT 3" 2>/dev/null)
             log "Test query result: $TEST_QUERY"
             
             # Execute the query without JSON format and parse manually
-            QUERY_RESULT=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcpd_profile_images WHERE url LIKE '%directories.today%' ORDER BY user_id" 2>/dev/null)
+            QUERY_RESULT=$("$WP_CLI" --path="$WORDPRESS_PATH" db query "SELECT user_id, url FROM wp_mcdir_profile_images WHERE url LIKE '%directories.today%' ORDER BY user_id" 2>/dev/null)
             QUERY_EXIT_CODE=$?
             
             log "Database query exit code: $QUERY_EXIT_CODE"

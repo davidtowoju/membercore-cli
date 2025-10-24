@@ -40,10 +40,10 @@ class Base
      * ## EXAMPLES
      *
      *     wp meco fresh
-     *     wp meco fresh --prefixes=meco,mcpd
+     *     wp meco fresh --prefixes=meco,mcdir
      *     wp meco fresh transactions subscriptions
-     *     wp meco fresh --dry-run --prefixes=meco,mcpd,mpcs
-     *     wp meco fresh --prefixes=mcpd --include-posts
+     *     wp meco fresh --dry-run --prefixes=meco,mcdir,mpcs
+     *     wp meco fresh --prefixes=mcdir --include-posts
      *
      * @when after_wp_load
      */
@@ -250,7 +250,7 @@ class Base
         \WP_CLI::line('Available MemberCore CLI commands:');
         \WP_CLI::line('');
         \WP_CLI::line('Base commands (wp meco):');
-        \WP_CLI::line('  fresh               - Reset/truncate tables by prefix (supports --prefixes=meco,mcpd,mpcs,etc)');
+        \WP_CLI::line('  fresh               - Reset/truncate tables by prefix (supports --prefixes=meco,mcdir,mpcs,etc)');
         \WP_CLI::line('  info                - Show system information');
         \WP_CLI::line('  setup_memberships   - Create demo membership products');
         \WP_CLI::line('  list                - Show this help');
@@ -267,7 +267,7 @@ class Base
         \WP_CLI::line('Transaction commands (wp meco transaction):');
         \WP_CLI::line('  expire    - Expire specific transactions');
         \WP_CLI::line('');
-        \WP_CLI::line('Snippet commands (wp mcpd snippet):');
+        \WP_CLI::line('Snippet commands (wp mcdir snippet):');
         \WP_CLI::line('  create    - Create new code snippet (requires Code Snippets plugin)');
         \WP_CLI::line('  list      - List existing code snippets');
         \WP_CLI::line('  delete    - Delete a code snippet');
@@ -368,7 +368,7 @@ class Base
     {
         $post_types_map = [
             'meco' => ['membercoreproduct', 'meco_rule', 'meco_group', 'meco_reminder'],
-            'mcpd' => ['mcpd_directory', 'mcpd_job'],
+            'mcdir' => ['mcdir_directory', 'mcdir_job'],
             'mpcs' => ['mpcs_course', 'mpcs_lesson'],
             'mpch' => ['mpch_program', 'mpch_session']
         ];

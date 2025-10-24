@@ -794,7 +794,7 @@ class User extends Base
                         $social_fields = ['linkedin', 'facebook', 'twitter', 'bluesky', 'instagram', 'youtube', 'tiktok'];
                         foreach ($social_fields as $field) {
                             if (!empty($user_data[$field])) {
-                                update_user_meta($user_id, 'mcpd_' . $field, esc_url_raw($user_data[$field]));
+                                update_user_meta($user_id, 'mcdir_' . $field, esc_url_raw($user_data[$field]));
                             }
                         }
 
@@ -973,7 +973,7 @@ class User extends Base
                 $social_fields = ['linkedin', 'facebook', 'twitter', 'bluesky', 'instagram', 'youtube', 'tiktok'];
                 foreach ($social_fields as $field) {
                     if (!empty($user_data[$field])) {
-                        update_user_meta($user_id, 'mcpd_' . $field, esc_url_raw($user_data[$field]));
+                        update_user_meta($user_id, 'mcdir_' . $field, esc_url_raw($user_data[$field]));
                     }
                 }
 
@@ -990,7 +990,7 @@ class User extends Base
                     $avatar_path = dirname(dirname(__FILE__)) . '/assets/avatars/' . $user_data['avatar'];
                     if (file_exists($avatar_path)) {
                         // Check if user already has avatar
-                        $has_avatar = \membercore\profiles\models\ProfileImage::has_profile_photo($user_id);
+                        $has_avatar = \membercore\directory\models\ProfileImage::has_profile_photo($user_id);
                         if (!$has_avatar) {
                             if ($this->upload_user_avatar($user_id, $avatar_path)) {
                                 $stats['avatars_uploaded']++;
@@ -1376,18 +1376,18 @@ class User extends Base
             ];
 
             // Check if ProfileImage class is available
-            if (!class_exists('membercore\profiles\models\ProfileImage')) {
+            if (!class_exists('membercore\directory\models\ProfileImage')) {
                 return false;
             }
 
             // Remove any existing profile image for this user
-            $existing_image = \membercore\profiles\models\ProfileImage::has_profile_photo($user_id);
+            $existing_image = \membercore\directory\models\ProfileImage::has_profile_photo($user_id);
             if ($existing_image) {
                 $existing_image->destroy();
             }
 
             // Create new ProfileImage record with proper timestamps
-            $profile_image = new \membercore\profiles\models\ProfileImage([
+            $profile_image = new \membercore\directory\models\ProfileImage([
                 'user_id' => $user_id,
                 'url' => $uploaded_file['url'],
                 'type' => 'avatar',

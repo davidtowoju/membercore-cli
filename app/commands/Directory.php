@@ -42,7 +42,7 @@ class Directory
         $dry_run      = isset($assoc_args['dry-run']);
 
         $directory = get_post($directory_id);
-        if (!$directory || $directory->post_type !== \membercore\profiles\models\Directory::CPT) {
+        if (!$directory || $directory->post_type !== \membercore\directory\models\Directory::CPT) {
             \WP_CLI::error("Directory with ID {$directory_id} not found");
         }
 
@@ -52,17 +52,17 @@ class Directory
             \WP_CLI::log('DRY RUN MODE - No changes will be made');
         }
 
-        $job = new \membercore\profiles\jobs\DirectoryEnrollmentJob();
+        $job = new \membercore\directory\jobs\DirectoryEnrollmentJob();
 
         if ($dry_run) {
             // Simulate the job
-            $directory_model = new \membercore\profiles\models\Directory($directory_id);
-            $users           = \membercore\profiles\helpers\EnrollmentHelper::get_eligible_users($directory_model);
+            $directory_model = new \membercore\directory\models\Directory($directory_id);
+            $users           = \membercore\directory\helpers\EnrollmentHelper::get_eligible_users($directory_model);
 
             \WP_CLI::log('Found ' . count($users) . ' eligible users');
 
             foreach ($users as $user) {
-                $is_enrolled = \membercore\profiles\models\Enrollment::is_enrolled($user->ID, $directory_id);
+                $is_enrolled = \membercore\directory\models\Enrollment::is_enrolled($user->ID, $directory_id);
                 if (!$is_enrolled) {
                     \WP_CLI::log("Would enroll: {$user->user_login} (ID: {$user->ID})");
                 } else {
@@ -107,7 +107,7 @@ class Directory
 
         $dry_run = isset($assoc_args['dry-run']);
 
-        $directories = \membercore\profiles\models\Directory::get_all();
+        $directories = \membercore\directory\models\Directory::get_all();
 
         if (empty($directories)) {
             \WP_CLI::log('No published directories found');
@@ -164,7 +164,7 @@ class Directory
         $dry_run      = isset($assoc_args['dry-run']);
 
         $directory = get_post($directory_id);
-        if (!$directory || $directory->post_type !== \membercore\profiles\models\Directory::CPT) {
+        if (!$directory || $directory->post_type !== \membercore\directory\models\Directory::CPT) {
             \WP_CLI::error("Directory with ID {$directory_id} not found");
         }
 
@@ -214,14 +214,14 @@ class Directory
         if ($directory_id) {
             // Unenroll all users from a specific directory
             $directory = get_post($directory_id);
-            if (!$directory || $directory->post_type !== \membercore\profiles\models\Directory::CPT) {
+            if (!$directory || $directory->post_type !== \membercore\directory\models\Directory::CPT) {
                 \WP_CLI::error("Directory with ID {$directory_id} not found");
             }
 
             \WP_CLI::log("Processing directory: {$directory->post_title} (ID: {$directory_id})");
 
             // Get current enrollments
-            $enrollments = \membercore\profiles\models\Enrollment::get_by_directory($directory_id, true);
+            $enrollments = \membercore\directory\models\Enrollment::get_by_directory($directory_id, true);
 
             if (empty($enrollments)) {
                 \WP_CLI::log('No active enrollments found for this directory');
@@ -256,7 +256,7 @@ class Directory
             foreach ($enrollments as $enrollment) {
                 $user = get_user_by('ID', $enrollment->user_id);
                 if ($user) {
-                    $result = \membercore\profiles\models\Enrollment::unenroll_user($enrollment->user_id, $directory_id);
+                    $result = \membercore\directory\models\Enrollment::unenroll_user($enrollment->user_id, $directory_id);
                     if ($result) {
                         \WP_CLI::log("✓ Unenrolled: {$user->user_login} (ID: {$user->ID})");
                         ++$success_count;
@@ -276,7 +276,7 @@ class Directory
             }
         } else {
             // Unenroll all users from all directories
-            $directories = \membercore\profiles\models\Directory::get_all();
+            $directories = \membercore\directory\models\Directory::get_all();
 
             if (empty($directories)) {
                 \WP_CLI::log('No published directories found');
@@ -288,7 +288,7 @@ class Directory
             // Count total enrollments
             $total_enrollments = 0;
             foreach ($directories as $directory) {
-                $enrollments        = \membercore\profiles\models\Enrollment::get_by_directory($directory->ID, true);
+                $enrollments        = \membercore\directory\models\Enrollment::get_by_directory($directory->ID, true);
                 $total_enrollments += count($enrollments);
             }
 
@@ -302,7 +302,7 @@ class Directory
             if ($dry_run) {
                 \WP_CLI::log('DRY RUN MODE - No changes will be made');
                 foreach ($directories as $directory) {
-                    $enrollments = \membercore\profiles\models\Enrollment::get_by_directory($directory->ID, true);
+                    $enrollments = \membercore\directory\models\Enrollment::get_by_directory($directory->ID, true);
                     if (!empty($enrollments)) {
                         \WP_CLI::log("Directory '{$directory->post_title}' (ID: {$directory->ID}): " . count($enrollments) . ' enrollments');
                         foreach ($enrollments as $enrollment) {
@@ -329,7 +329,7 @@ class Directory
             $total_errors  = 0;
 
             foreach ($directories as $directory) {
-                $enrollments = \membercore\profiles\models\Enrollment::get_by_directory($directory->ID, true);
+                $enrollments = \membercore\directory\models\Enrollment::get_by_directory($directory->ID, true);
 
                 if (empty($enrollments)) {
                     continue;
@@ -340,7 +340,7 @@ class Directory
                 foreach ($enrollments as $enrollment) {
                     $user = get_user_by('ID', $enrollment->user_id);
                     if ($user) {
-                        $result = \membercore\profiles\models\Enrollment::unenroll_user($enrollment->user_id, $directory->ID);
+                        $result = \membercore\directory\models\Enrollment::unenroll_user($enrollment->user_id, $directory->ID);
                         if ($result) {
                             \WP_CLI::log("  ✓ Unenrolled: {$user->user_login} (ID: {$user->ID})");
                             ++$total_success;
@@ -376,7 +376,7 @@ class Directory
     {
         $this->ensure_profiles_plugin_loaded();
 
-        $directories = \membercore\profiles\models\Directory::get_all();
+        $directories = \membercore\directory\models\Directory::get_all();
 
         if (empty($directories)) {
             \WP_CLI::log('No published directories found');
@@ -386,7 +386,7 @@ class Directory
         $table_data = [];
 
         foreach ($directories as $directory) {
-            $total_enrolled    = \membercore\profiles\models\Enrollment::get_count([
+            $total_enrolled    = \membercore\directory\models\Enrollment::get_count([
                 'directory_id' => $directory->ID,
                 'is_active'    => 1,
             ]);
@@ -455,7 +455,7 @@ class Directory
         $format        = isset($assoc_args['format']) ? $assoc_args['format'] : 'table';
 
         $directory = get_post($directory_id);
-        if (!$directory || $directory->post_type !== \membercore\profiles\models\Directory::CPT) {
+        if (!$directory || $directory->post_type !== \membercore\directory\models\Directory::CPT) {
             \WP_CLI::error("Directory with ID {$directory_id} not found");
         }
 
@@ -467,7 +467,7 @@ class Directory
             $enrollment_args['is_active'] = ($status_filter === 'active') ? 1 : 0;
         }
 
-        $enrollments = \membercore\profiles\models\Enrollment::get_by_directory($directory_id, ($status_filter !== 'all'));
+        $enrollments = \membercore\directory\models\Enrollment::get_by_directory($directory_id, ($status_filter !== 'all'));
 
         if (empty($enrollments)) {
             \WP_CLI::log("No users found with status: {$status_filter}");
@@ -524,7 +524,7 @@ class Directory
 
         \WP_CLI::line('Updating enrollment counts for all directories...');
         
-        $directories = \membercore\profiles\models\Directory::get_all();
+        $directories = \membercore\directory\models\Directory::get_all();
         $count = 0;
         
         foreach ($directories as $directory) {
@@ -585,7 +585,7 @@ class Directory
         $format        = isset($assoc_args['format']) ? $assoc_args['format'] : 'table';
 
         global $wpdb;
-        $prefix = $wpdb->prefix . 'mcpd_';
+        $prefix = $wpdb->prefix . 'mcdir_';
 
         // Get job counts by status
         $stats = $this->get_job_statistics($prefix);
@@ -663,7 +663,7 @@ class Directory
         }
 
         global $wpdb;
-        $prefix = $wpdb->prefix . 'mcpd_';
+        $prefix = $wpdb->prefix . 'mcdir_';
 
         \WP_CLI::log('=== Job Queue Watcher ===');
         \WP_CLI::log("Watching job status every {$interval} seconds...");
@@ -810,7 +810,7 @@ class Directory
         $table  = isset($assoc_args['table']) ? $assoc_args['table'] : 'jobs';
 
         global $wpdb;
-        $prefix = $wpdb->prefix . 'mcpd_';
+        $prefix = $wpdb->prefix . 'mcdir_';
 
         // Map table options to actual table names
         $table_map = [
@@ -896,7 +896,7 @@ class Directory
         $dry_run       = isset($assoc_args['dry-run']);
 
         global $wpdb;
-        $prefix = $wpdb->prefix . 'mcpd_';
+        $prefix = $wpdb->prefix . 'mcdir_';
 
         // Build the where clause
         $where_conditions = [];
@@ -1001,7 +1001,7 @@ class Directory
         $dry_run      = isset($assoc_args['dry-run']);
 
         global $wpdb;
-        $prefix = $wpdb->prefix . 'mcpd_';
+        $prefix = $wpdb->prefix . 'mcdir_';
 
         // If specific job ID is provided, retry only that job
         if ($job_id) {
@@ -1077,8 +1077,8 @@ class Directory
      */
     private function ensure_profiles_plugin_loaded(): void
     {
-        if (!class_exists('\\membercore\\profiles\\models\\Directory')) {
-            \WP_CLI::error('MemberCore Profiles & Directories plugin is not active or not found');
+        if (!class_exists('\\membercore\\directory\\models\\Directory')) {
+            \WP_CLI::error('MemberCore Directory plugin is not active or not found');
         }
     }
 
@@ -1090,14 +1090,14 @@ class Directory
      */
     private function preview_sync(int $directory_id): void
     {
-        $directory_model = new \membercore\profiles\models\Directory($directory_id);
+        $directory_model = new \membercore\directory\models\Directory($directory_id);
 
         // Get all current enrollments for this directory
-        $current_enrollments = \membercore\profiles\models\Enrollment::get_by_directory($directory_id, true);
+        $current_enrollments = \membercore\directory\models\Enrollment::get_by_directory($directory_id, true);
         $enrolled_user_ids   = array_column($current_enrollments, 'user_id');
 
         // Get eligible users
-        $eligible_users    = \membercore\profiles\helpers\EnrollmentHelper::get_eligible_users($directory_model);
+        $eligible_users    = \membercore\directory\helpers\EnrollmentHelper::get_eligible_users($directory_model);
         $eligible_user_ids = array_column($eligible_users, 'ID');
 
         // Find users who should be enrolled but aren't
@@ -1135,7 +1135,7 @@ class Directory
     private function sync_directory(int $directory_id): void
     {
         try {
-            $job = new \membercore\profiles\jobs\DirectorySyncJob();
+            $job = new \membercore\directory\jobs\DirectorySyncJob();
             $job->setAttribute('args', json_encode(['directory_id' => $directory_id]));
             $job->run();
         } catch (\Exception $e) {
