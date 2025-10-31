@@ -245,8 +245,8 @@ if run_wp_command "Update Site URLs" "search-replace directories.test $REPLACE_T
     # Command 6: Import Profile Images - Copy avatar images to uploads directory
     AVATARS_SOURCE="$WORDPRESS_PATH/wp-content/plugins/membercore-cli/app/assets/avatars"
     UPLOADS_DIR="$WORDPRESS_PATH/wp-content/uploads"
-    TARGET_YEAR="2025"
-    TARGET_MONTH="09"
+    TARGET_YEAR=$(date +%Y)
+    TARGET_MONTH=$(date +%m)
     TARGET_DIR="$UPLOADS_DIR/$TARGET_YEAR/$TARGET_MONTH"
 
     log "Starting: Import Profile Images"
