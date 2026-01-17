@@ -137,6 +137,28 @@ class Coaching {
 	/**
 	 * Seed program titles as new posts.
 	 *
+	 * ## OPTIONS
+	 *
+	 * [--programs=<number>]
+	 * : Number of programs to create (1-7). Default: random between 1-7.
+	 *
+	 * [--assign-memberships]
+	 * : Automatically assign created programs to random memberships.
+	 *
+	 * [--memberships-per-program=<number>]
+	 * : Number of random memberships to assign per program. Default: 1-3 (random).
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     # Seed 3 programs
+	 *     wp mpch seed --programs=3
+	 *
+	 *     # Seed 5 programs and assign them to random memberships
+	 *     wp mpch seed --programs=5 --assign-memberships
+	 *
+	 *     # Seed programs and assign each to 2 memberships
+	 *     wp mpch seed --programs=3 --assign-memberships --memberships-per-program=2
+	 *
 	 * @alias seed
 	 *
 	 * @when after_wp_load
@@ -153,6 +175,29 @@ class Coaching {
 			\WP_CLI::error( 'Select number from 1 - 7' );
 		}
 
+		$assign_memberships = isset( $assoc_args['assign-memberships'] );
+		$memberships_per_program = isset( $assoc_args['memberships-per-program'] ) 
+			? intval( $assoc_args['memberships-per-program'] ) 
+			: $this->faker->numberBetween( 1, 3 );
+
+		// Get available memberships if needed
+		$available_memberships = [];
+		if ( $assign_memberships ) {
+			$available_memberships = get_posts([
+				'post_type' => 'membercoreproduct',
+				'post_status' => 'publish',
+				'numberposts' => -1,
+				'fields' => 'ids'
+			]);
+
+			if ( empty( $available_memberships ) ) {
+				\WP_CLI::warning( 'No memberships found. Programs will be created but not assigned to any memberships.' );
+				$assign_memberships = false;
+			} else {
+				\WP_CLI::line( sprintf( 'Found %d membership(s) to assign programs to.', count( $available_memberships ) ) );
+			}
+		}
+
 		// Use Collect to create a Collection from the JSON
 		$programs = Collection::make( json_decode( $program_json, true ) );
 
@@ -160,9 +205,11 @@ class Coaching {
 			\WP_CLI::error( 'No valid programs found in the JSON.' );
 		}
 
+		$created_program_ids = [];
+
 		// Use Collect's each method for iteration
 		$programs->random( $number )->each(
-			function ( $program ) {
+			function ( $program ) use ( &$created_program_ids ) {
 
 				// Adjust the post type and any other parameters as needed
 				$post_id = wp_insert_post(
@@ -217,12 +264,25 @@ class Coaching {
 				}
 
 				if ( $post_id ) {
-					\WP_CLI::success( "Program". $program['program_title']." inserted with ID: $post_id" );
+					$created_program_ids[] = $post_id;
+					\WP_CLI::success( "Program '" . $program['program_title'] . "' inserted with ID: $post_id" );
 				} else {
-					\WP_CLI::warning( "Failed to insert program ". $program['program_title'] );
+					\WP_CLI::warning( "Failed to insert program '" . $program['program_title'] . "'" );
 				}
 			}
 		);
+
+		// Assign programs to memberships if requested
+		if ( $assign_memberships && !empty( $created_program_ids ) && !empty( $available_memberships ) ) {
+			\WP_CLI::line( '' );
+			\WP_CLI::line( 'Assigning programs to memberships...' );
+			
+			$this->assign_programs_to_memberships( 
+				$created_program_ids, 
+				$available_memberships, 
+				$memberships_per_program 
+			);
+		}
 	}
 
 	/**
@@ -239,6 +299,41 @@ class Coaching {
 		$options = \MecoOptions::fetch();
 		$options->rl_enable_coaching_template = !$options->rl_enable_coaching_template;
 		$options->store(false);
+	}
+
+	/**
+	 * Assign programs to random memberships
+	 *
+	 * @param array $program_ids Array of program IDs to assign.
+	 * @param array $membership_ids Array of available membership IDs.
+	 * @param int $memberships_per_program Number of memberships to assign per program.
+	 */
+	private function assign_programs_to_memberships( $program_ids, $membership_ids, $memberships_per_program ) {
+		foreach ( $program_ids as $program_id ) {
+			// Get random memberships for this program
+			$selected_count = min( $memberships_per_program, count( $membership_ids ) );
+			$selected_memberships = (array) array_rand( array_flip( $membership_ids ), $selected_count );
+			
+			foreach ( $selected_memberships as $membership_id ) {
+				// Get existing programs for this membership
+				$existing_programs = get_post_meta( $membership_id, '_mpch_programs', true );
+				if ( ! is_array( $existing_programs ) ) {
+					$existing_programs = [];
+				}
+
+				// Add program if not already assigned
+				if ( ! in_array( $program_id, $existing_programs ) ) {
+					$existing_programs[] = $program_id;
+					update_post_meta( $membership_id, '_mpch_programs', $existing_programs );
+					
+					$membership = get_post( $membership_id );
+					$program = get_post( $program_id );
+					\WP_CLI::log( "  ✓ Assigned '{$program->post_title}' to membership '{$membership->post_title}' (ID: {$membership_id})" );
+				}
+			}
+		}
+		
+		\WP_CLI::success( sprintf( 'Assigned %d program(s) to memberships.', count( $program_ids ) ) );
 	}
 
 	/**
