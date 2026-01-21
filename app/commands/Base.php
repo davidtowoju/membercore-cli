@@ -370,7 +370,7 @@ class Base
             'meco' => ['membercoreproduct', 'meco_rule', 'meco_group', 'meco_reminder'],
             'mcdir' => ['mcdir_directory', 'mcdir_job'],
             'mpcs' => ['mpcs_course', 'mpcs_lesson'],
-            'mpch' => ['mpch_program', 'mpch_session']
+            'mcch' => ['mcch_program', 'mcch_session']
         ];
 
         return $post_types_map[$prefix] ?? [];

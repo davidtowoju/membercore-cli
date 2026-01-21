@@ -78,12 +78,12 @@ class Coaching {
 	public function reset_options( $args, $assoc_args ) {
 		global $wpdb;
 		
-		// Delete rows starting with 'meco' or 'mpch'
+		// Delete rows starting with 'meco' or 'mcch'
 		$wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$wpdb->prefix}options WHERE option_name LIKE %s OR option_name LIKE %s",
 				'meco%',
-				'mpch%'
+				'mcch%'
 			)
 		);
 

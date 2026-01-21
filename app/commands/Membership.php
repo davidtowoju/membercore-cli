@@ -52,8 +52,11 @@ class Membership extends Base
      * <user_id>
      * : User ID, email, or username
      *
-     * <membership_id>
-     * : Membership ID
+     * [<membership_id>]
+     * : Membership ID (optional if --random is used)
+     *
+     * [--random]
+     * : Assign a random membership to the user
      *
      * [--amount=<amount>]
      * : Transaction amount. Default: 0.00
@@ -75,20 +78,54 @@ class Membership extends Base
      *     wp meco membership assign 123 456 --expires=2024-12-31
      *     wp meco membership assign 123 456 --expires=never
      *     wp meco membership assign 123 456 --dry-run
+     *     wp meco membership assign 123 --random
+     *     wp meco membership assign admin@example.com --random --dry-run
      *
      * @when after_wp_load
      */
     public function assign($args, $assoc_args)
     {
         $user_identifier = $args[0];
-        $membership_id = intval($args[1]);
         $dry_run = isset($assoc_args['dry-run']);
+        $use_random = isset($assoc_args['random']);
 
         // Get user
         $user = UserHelper::get_user($user_identifier);
         if (!$user) {
             $this->error("User '{$user_identifier}' not found.");
             return;
+        }
+
+        // Determine membership ID
+        if ($use_random) {
+            // Get all memberships and pick one randomly
+            $memberships = MembershipHelper::get_all_memberships();
+            if (empty($memberships)) {
+                $this->error('No memberships found to assign randomly.');
+                return;
+            }
+
+            // Filter out memberships the user already has
+            $available_memberships = array_filter($memberships, function($membership) use ($user) {
+                return !MembershipHelper::user_has_active_membership($user->ID, $membership['id']);
+            });
+
+            if (empty($available_memberships)) {
+                $this->warning("User {$user->user_login} already has all available memberships.");
+                return;
+            }
+
+            // Pick a random membership
+            $random_membership = $available_memberships[array_rand($available_memberships)];
+            $membership_id = intval($random_membership['id']);
+            $this->log("Randomly selected membership: {$random_membership['title']} (ID: {$membership_id})");
+        } else {
+            // Use provided membership ID
+            if (!isset($args[1])) {
+                $this->error('Please provide a membership ID or use --random flag.');
+                return;
+            }
+            $membership_id = intval($args[1]);
         }
 
         // Validate membership exists
@@ -215,6 +252,80 @@ class Membership extends Base
             $this->success("Successfully removed membership '{$membership['title']}' from user {$user->user_login}.");
         } else {
             $this->error("Failed to remove membership. User may not have active transactions for this membership.");
+        }
+    }
+
+    /**
+     * Remove all memberships from user
+     *
+     * ## OPTIONS
+     *
+     * <user_id>
+     * : User ID, email, or username
+     *
+     * [--dry-run]
+     * : Show what would happen without making changes
+     *
+     * ## EXAMPLES
+     *
+     *     wp meco membership remove-all 123
+     *     wp meco membership remove-all admin@example.com
+     *     wp meco membership remove-all john_doe --dry-run
+     *
+     * @when after_wp_load
+     */
+    public function remove_all($args, $assoc_args)
+    {
+        $user_identifier = $args[0];
+        $dry_run = isset($assoc_args['dry-run']);
+
+        // Get user
+        $user = UserHelper::get_user($user_identifier);
+        if (!$user) {
+            $this->error("User '{$user_identifier}' not found.");
+            return;
+        }
+
+        // Get all active memberships for this user
+        $active_memberships = MembershipHelper::get_user_active_memberships($user->ID);
+
+        if (empty($active_memberships)) {
+            $this->warning("User {$user->user_login} has no active memberships.");
+            return;
+        }
+
+        $count = count($active_memberships);
+        $this->log("Found {$count} active membership(s) for user {$user->user_login}:");
+        
+        foreach ($active_memberships as $membership) {
+            $this->log("  - {$membership['title']} (ID: {$membership['id']})");
+        }
+
+        if ($dry_run) {
+            $this->log("DRY RUN: Would remove all {$count} membership(s) from user {$user->user_login} (ID: {$user->ID})");
+            return;
+        }
+
+        // Remove each membership
+        $removed_count = 0;
+        $failed_count = 0;
+
+        foreach ($active_memberships as $membership) {
+            $result = MembershipHelper::remove_membership_from_user($user->ID, $membership['id']);
+            
+            if ($result) {
+                $this->log("Removed: {$membership['title']}");
+                $removed_count++;
+            } else {
+                $this->warning("Failed to remove: {$membership['title']}");
+                $failed_count++;
+            }
+        }
+
+        if ($failed_count === 0) {
+            $this->success("Successfully removed all {$removed_count} membership(s) from user {$user->user_login}.");
+        } else {
+            $this->warning("Removed {$removed_count} membership(s), but {$failed_count} failed.");
         }
     }
 

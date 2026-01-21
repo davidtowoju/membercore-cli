@@ -87,7 +87,7 @@ add_action('plugins_loaded', function() {
             'description' => 'MemberCore Courses management commands',
         ],
         [
-            'slug'       => 'mpch',
+            'slug'       => 'mcch',
             'class'      => 'Coaching',
             'namespace'  => 'membercore\\cli\\commands',
             'dependency' => 'membercore\\coachkit\\models\\Program',
