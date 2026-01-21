@@ -383,7 +383,7 @@ class User extends Base
                     $user_data = [
                         'user_login' => $username,
                         'user_email' => $email,
-                        'user_pass' => wp_generate_password(12, false),
+                        'user_pass' => 'password',
                         'role' => $role,
                         'display_name' => ucfirst($prefix) . ' ' . $user_number,
                         'first_name' => ucfirst($prefix),
@@ -735,7 +735,7 @@ class User extends Base
                     $wp_user_data = [
                         'user_login' => $user_data['username'],
                         'user_email' => $email,
-                        'user_pass' => wp_generate_password(12, false),
+                        'user_pass' => 'password',
                         'role' => $role,
                         'display_name' => $user_data['first_name'] . ' ' . $user_data['last_name'],
                         'first_name' => $user_data['first_name'],

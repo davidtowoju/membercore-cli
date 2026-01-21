@@ -242,6 +242,131 @@ class Coaching {
 	}
 
 	/**
+	 * Sync enrollments for memberships that have assigned programs.
+	 * 
+	 * ## OPTIONS
+	 * 
+	 * [--membership=<membership_id>]
+	 * : The membership ID to sync. If not provided, syncs all memberships with assigned programs.
+	 * 
+	 * [--dry-run]
+	 * : Show what would be synced without actually creating enrollments.
+	 * 
+	 * @alias sync-enrollments
+	 * @when after_wp_load
+	 */
+	public function sync_enrollments( $args, $assoc_args ) {
+		$dry_run = isset( $assoc_args['dry-run'] );
+		$membership_id = isset( $assoc_args['membership'] ) ? intval( $assoc_args['membership'] ) : null;
+
+		global $wpdb;
+		$meco_db = \MecoDb::fetch();
+
+		// 1. Get memberships with assigned programs
+		$query_args = [
+			'post_type' => 'membercoreproduct',
+			'post_status' => 'publish',
+			'meta_query' => [
+				[
+					'key' => models\Program::PRODUCT_META,
+					'compare' => 'EXISTS',
+				],
+			],
+			'posts_per_page' => -1,
+		];
+
+		if ( $membership_id ) {
+			$query_args['p'] = $membership_id;
+		}
+
+		$products = get_posts( $query_args );
+
+		if ( empty( $products ) ) {
+			\WP_CLI::error( "No memberships with assigned programs found." );
+		}
+
+		foreach ( $products as $product ) {
+			$assigned_programs_raw = get_post_meta( $product->ID, models\Program::PRODUCT_META, true );
+			if ( empty( $assigned_programs_raw ) ) {
+				continue;
+			}
+
+			$assigned_programs = Collection::make( maybe_unserialize( $assigned_programs_raw ) );
+
+			if ( $assigned_programs->isEmpty() ) {
+				continue;
+			}
+
+			\WP_CLI::log( "Processing membership: {$product->post_title} (ID: {$product->ID})" );
+
+			// 2. Find all users with active transactions for this membership
+			$transactions = $wpdb->get_results( $wpdb->prepare(
+				"SELECT * FROM {$meco_db->transactions} WHERE product_id = %d AND status IN ('complete', 'confirmed') AND (expires_at >= %s OR expires_at = '0000-00-00 00:00:00')",
+				$product->ID,
+				current_time( 'mysql' )
+			) );
+
+			if ( empty( $transactions ) ) {
+				\WP_CLI::log( "  No active transactions found for this membership." );
+				continue;
+			}
+
+			\WP_CLI::log( "  Found " . count( $transactions ) . " active transactions." );
+
+			// 3. For each transaction, ensure the user is enrolled in all assigned programs
+			foreach ( $transactions as $txn ) {
+				$assigned_programs->each( function ( $item ) use ( $txn, $product, $dry_run ) {
+					if ( ! isset( $item['program_id'] ) ) {
+						return;
+					}
+
+					$program = new models\Program( $item['program_id'] );
+					
+					// Check if user is already enrolled in this program
+					$existing_enrollment = models\Enrollment::get_one( [ 
+						'student_id' => $txn->user_id,
+						'program_id' => $program->id
+					] );
+
+					if ( $existing_enrollment ) {
+						return; // Already enrolled
+					}
+
+					if ( $dry_run ) {
+						\WP_CLI::log( "  [DRY RUN] Would enroll user {$txn->user_id} in program {$program->title}" );
+						return;
+					}
+
+					// Find next available group
+					$group = $program->next_available_group( $program->groups(), $txn->user_id );
+
+					if ( ! $group ) {
+						\WP_CLI::warning( "  No available group for program {$program->title} (User ID: {$txn->user_id})" );
+						return;
+					}
+
+					$enrollment             = new models\Enrollment();
+					$enrollment->student_id = $txn->user_id;
+					$enrollment->group_id   = $group->id;
+					$enrollment->start_date = $group->get_start_date();
+					$enrollment->program_id = $group->program_id;
+					$enrollment->txn_id     = $txn->id;
+					$enrollment->created_at = lib\Utils::ts_to_mysql_date( time() );
+					$enrollment->features   = 'messaging';
+					$enrollment_id          = $enrollment->store();
+
+					if ( is_wp_error( $enrollment_id ) ) {
+						\WP_CLI::error( "  Failed to enroll user {$txn->user_id} in program {$program->title}: " . $enrollment_id->get_error_message() );
+					} else {
+						\WP_CLI::success( "  Enrolled user {$txn->user_id} in program {$program->title} (Group ID: {$group->id})" );
+						lib\Utils::send_program_started_notice( $program, $product, $enrollment );
+					}
+				} );
+			}
+		}
+	}
+
+	/**
 	 * Function to get or create a coach and return the coach ID.
 	 *
 	 * @param string $coach_email Email of the coach.
