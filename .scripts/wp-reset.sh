@@ -48,6 +48,15 @@ log "Using site: $SITE_TITLE ($SITE_URL)"
 if [ "$SKIP_DB_RESET" -eq 0 ]; then
   log "Resetting database"
   wp db reset --yes
+  
+  log "Reinstalling WordPress"
+  wp core install \
+    --url="$SITE_URL" \
+    --title="$SITE_TITLE" \
+    --admin_user="$ADMIN_USER" \
+    --admin_password="$ADMIN_PASS" \
+    --admin_email="$ADMIN_EMAIL" \
+    --skip-email
 else
   log "DB reset skipped"
 fi
@@ -100,17 +109,15 @@ if [ "$SKIP_PRODUCTS" -eq 0 ]; then
   wp post create --post_type=membercoreproduct \
     --post_title="Basic Membership" \
     --post_status=publish \
-    --meta_input='{"_meco_product_price":"29.00"}'
+    --meta_input='{"_meco_product_price":"29.00","_meco_product_period_type":"lifetime","_meco_product_period":"1"}'
 
   wp post create --post_type=membercoreproduct \
     --post_title="Basic Membership – Monthly" \
     --post_status=publish \
     --meta_input='{
       "_meco_product_price":"9.00",
-      "_meco_product_period_type":"regular",
-      "_meco_product_period":"monthly",
-      "_meco_product_period_count":"1",
-      "_meco_product_recurring":"1"
+      "_meco_product_period_type":"months",
+      "_meco_product_period":"1",
     }'
 
   wp post create --post_type=membercoreproduct \
@@ -118,10 +125,8 @@ if [ "$SKIP_PRODUCTS" -eq 0 ]; then
     --post_status=publish \
     --meta_input='{
       "_meco_product_price":"99.00",
-      "_meco_product_period_type":"regular",
-      "_meco_product_period":"yearly",
-      "_meco_product_period_count":"1",
-      "_meco_product_recurring":"1"
+      "_meco_product_period_type":"years",
+      "_meco_product_period":"1",
     }'
 
   wp post create --post_type=membercoreproduct \
@@ -129,10 +134,8 @@ if [ "$SKIP_PRODUCTS" -eq 0 ]; then
     --post_status=publish \
     --meta_input='{
       "_meco_product_price":"19.00",
-      "_meco_product_period_type":"regular",
-      "_meco_product_period":"monthly",
-      "_meco_product_period_count":"1",
-      "_meco_product_recurring":"1"
+      "_meco_product_period_type":"months",
+      "_meco_product_period":"1",
     }'
 else
   log "Products skipped"

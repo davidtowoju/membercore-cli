@@ -599,4 +599,125 @@ class Connect extends Base
             \WP_CLI::line("Errors: {$errors}");
         }
     }
+
+    /**
+     * Populate messages in existing rooms
+     *
+     * Deletes existing messages and creates new test messages from all participants.
+     * Does NOT delete rooms - only clears and repopulates messages.
+     *
+     * ## OPTIONS
+     *
+     * [--messages-per-user=<number>]
+     * : Number of messages per participant (default: 3-8 random)
+     *
+     * [--source-type=<type>]
+     * : Source type for rooms to populate (default: coachkit_group)
+     *
+     * ## EXAMPLES
+     *
+     *     wp mccon populate-messages
+     *     wp mccon populate-messages --messages-per-user=5
+     *     wp mccon populate-messages --source-type=coachkit_group
+     *
+     * @when after_wp_load
+     *
+     * @param array $args The command arguments.
+     * @param array $assoc_args The command associative arguments.
+     */
+    public function populate_messages($args, $assoc_args)
+    {
+        // Check if Connect plugin is active
+        if (!class_exists('membercore\\connect\\Models\\Room')) {
+            \WP_CLI::error('MemberCore Connect plugin is not active.');
+            return;
+        }
+
+        $messagesPerUser = isset($assoc_args['messages-per-user']) ? (int) $assoc_args['messages-per-user'] : null;
+        $sourceType = $assoc_args['source-type'] ?? 'coachkit_group';
+
+        // Get all rooms for the source type
+        $rooms = \membercore\connect\Models\Room::where('source_type', '=', $sourceType);
+
+        if (empty($rooms)) {
+            \WP_CLI::error("No rooms found with source type: {$sourceType}");
+            return;
+        }
+
+        \WP_CLI::line("Found " . count($rooms) . " rooms with source type: {$sourceType}");
+        \WP_CLI::confirm('This will delete all existing messages in these rooms and create new test messages. Continue?', $assoc_args);
+
+        $progress = \WP_CLI\Utils\make_progress_bar('Processing rooms', count($rooms));
+        $totalMessagesCreated = 0;
+        $totalParticipants = 0;
+
+        foreach ($rooms as $room) {
+            $roomId = $room->getId();
+
+            // Delete existing messages
+            \membercore\connect\Models\Message::deleteRoomMessages($roomId);
+
+            // Get all participants in this room
+            $participants = \membercore\connect\Models\RoomParticipant::getParticipants($roomId);
+
+            if (empty($participants)) {
+                $progress->tick();
+                continue;
+            }
+
+            $totalParticipants += count($participants);
+
+            // Create messages from each participant
+            foreach ($participants as $participant) {
+                $userId = (int) $participant['user_id'];
+                $messageCount = $messagesPerUser ?? rand(3, 8);
+
+                for ($i = 0; $i < $messageCount; $i++) {
+                    $messageText = $this->generateMessageText();
+                    
+                    // Random time in the past 30 days
+                    $days_ago = $this->faker->numberBetween(0, 30);
+                    $hours_ago = $this->faker->numberBetween(0, 23);
+                    $minutes_ago = $this->faker->numberBetween(0, 59);
+
+                    $now = current_time('timestamp');
+                    $timestamp = $now - ($days_ago * DAY_IN_SECONDS) - ($hours_ago * HOUR_IN_SECONDS) - ($minutes_ago * MINUTE_IN_SECONDS);
+                    $createdTime = gmdate('Y-m-d H:i:s', $timestamp);
+
+                    \membercore\connect\Models\Message::init([
+                        'room_id' => $roomId,
+                        'sender_id' => $userId,
+                        'message' => $messageText,
+                        'created' => $createdTime,
+                        'updated' => $createdTime,
+                    ])->save();
+
+                    $totalMessagesCreated++;
+                }
+            }
+
+            // Update room's updated timestamp to reflect latest activity
+            global $wpdb;
+            $wpdb->update(
+                $wpdb->prefix . 'mccon_rooms',
+                ['updated' => current_time('mysql', true)],
+                ['id' => $roomId],
+                ['%s'],
+                ['%d']
+            );
+
+            $progress->tick();
+        }
+
+        $progress->finish();
+
+        \WP_CLI::success(
+            sprintf(
+                'Populated %d messages across %d rooms (%d participants total)!',
+                $totalMessagesCreated,
+                count($rooms),
+                $totalParticipants
+            )
+        );
+    }
 }
