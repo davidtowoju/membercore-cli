@@ -38,6 +38,8 @@ if (file_exists(MEMBERCORE_CLI_PLUGIN_DIR . '/vendor/autoload.php')) {
     require_once MEMBERCORE_CLI_PLUGIN_DIR . '/app/commands/Courses.php';
     require_once MEMBERCORE_CLI_PLUGIN_DIR . '/app/commands/Directory.php';
     require_once MEMBERCORE_CLI_PLUGIN_DIR . '/app/commands/Snippet.php';
+    require_once MEMBERCORE_CLI_PLUGIN_DIR . '/app/commands/StripeSetup.php';
+    require_once MEMBERCORE_CLI_PLUGIN_DIR . '/app/commands/Connect.php';
 }
 
 // Only run if WP-CLI is available
@@ -128,6 +130,20 @@ add_action('plugins_loaded', function() {
             'namespace'  => 'membercore\\cli\\commands',
             'dependency' => null,
             'description' => 'Code Snippets management commands (requires Code Snippets plugin)',
+        ],
+        [
+            'slug'       => 'meco stripe-setup',
+            'class'      => 'StripeSetup',
+            'namespace'  => 'membercore\\cli\\commands',
+            'dependency' => 'MecoTransaction',
+            'description' => 'Configure Stripe settings from wp-config.php constants',
+        ],
+        [
+            'slug'       => 'mccon',
+            'class'      => 'Connect',
+            'namespace'  => 'membercore\\cli\\commands',
+            'dependency' => 'membercore\\connect\\Models\\Room',
+            'description' => 'MemberCore Connect messaging system commands',
         ],
     ];
 

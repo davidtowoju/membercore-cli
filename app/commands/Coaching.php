@@ -6,15 +6,17 @@ use membercore\coachkit\models as models;
 use membercore\coachkit\lib as lib;
 use Tightenco\Collect\Support\Collection;
 
-class Coaching {
+class Coaching
+{
 
 
 
 
 	protected $faker;
 
-	public function __construct() {
-		 $this->faker = \Faker\Factory::create();
+	public function __construct()
+	{
+		$this->faker = \Faker\Factory::create();
 	}
 
 	/**
@@ -25,8 +27,9 @@ class Coaching {
 	 * @param array $args The command arguments.
 	 * @param array $assoc_args The command associative arguments.
 	 */
-	public function reset( $args, $assoc_args ) {
-		$this->{'reset_' . $args[0]}( $args, $assoc_args );
+	public function reset($args, $assoc_args)
+	{
+		$this->{'reset_' . $args[0]}($args, $assoc_args);
 	}
 
 	/**
@@ -39,7 +42,8 @@ class Coaching {
 	 *
 	 * @when after_wp_load
 	 */
-	public function reset_progress( $args, $assoc_args ) {
+	public function reset_progress($args, $assoc_args)
+	{
 		global $wpdb;
 		$db      = \membercore\coachkit\lib\Db::fetch();
 		$meco_db = \MecoDb::fetch();
@@ -58,13 +62,13 @@ class Coaching {
 		];
 
 		// Prompt for confirmation
-		$confirmation_message = "This will truncate the following tables:\n- " . implode( "\n- ", $tables ) . "\nAre you sure you want to reset progress?";
-		\WP_CLI::confirm( $confirmation_message, true );
+		$confirmation_message = "This will truncate the following tables:\n- " . implode("\n- ", $tables) . "\nAre you sure you want to reset progress?";
+		\WP_CLI::confirm($confirmation_message, true);
 
-		foreach ( $tables as $key => $table ) {
-			$wpdb->query( "TRUNCATE TABLE {$table}" );
+		foreach ($tables as $key => $table) {
+			$wpdb->query("TRUNCATE TABLE {$table}");
 		}
-		\WP_CLI::success( 'Tables truncated' );
+		\WP_CLI::success('Tables truncated');
 	}
 
 	/**
@@ -75,9 +79,10 @@ class Coaching {
 	 * @param array $args The command arguments.
 	 * @param array $assoc_args The command associative arguments.
 	 */
-	public function reset_options( $args, $assoc_args ) {
+	public function reset_options($args, $assoc_args)
+	{
 		global $wpdb;
-		
+
 		// Delete rows starting with 'meco' or 'mcch'
 		$wpdb->query(
 			$wpdb->prepare(
@@ -91,7 +96,7 @@ class Coaching {
 		$meco_options->set_defaults();
 		$meco_options->store(false); // store will convert this back into an array
 
-		\WP_CLI::success( 'MemberCore Option rows deleted' );
+		\WP_CLI::success('MemberCore Option rows deleted');
 	}
 
 	/**
@@ -102,40 +107,63 @@ class Coaching {
 	 * @param array $args The command arguments.
 	 * @param array $assoc_args The command associative arguments.
 	 */
-	public function reset_programs( $args, $assoc_args ) {
+	public function reset_programs($args, $assoc_args)
+	{
 		global $wpdb;
 		$db = lib\Db::fetch();
 
-		if ( isset( $assoc_args['id'] ) ) {
-			$program_id = intval( $assoc_args['id'] );
+		if (isset($assoc_args['id'])) {
+			$program_id = intval($assoc_args['id']);
 
 			// Delete associated records for the specified program
-			$wpdb->query( $wpdb->prepare( "DELETE FROM {$db->checkins} WHERE milestone_id IN (SELECT id FROM {$db->milestones} WHERE program_id = %d) OR habit_id IN (SELECT id FROM {$db->habits} WHERE program_id = %d)", $program_id, $program_id ) );
-			$wpdb->query( $wpdb->prepare( "DELETE FROM {$db->milestones} WHERE program_id = %d", $program_id ) );
-			$wpdb->query( $wpdb->prepare( "DELETE FROM {$db->habits} WHERE program_id = %d", $program_id ) );
-			$wpdb->query( $wpdb->prepare( "DELETE FROM {$db->groups} WHERE program_id = %d", $program_id ) );
-			$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}posts WHERE ID = %d", $program_id ) );
+			$wpdb->query($wpdb->prepare("DELETE FROM {$db->checkins} WHERE milestone_id IN (SELECT id FROM {$db->milestones} WHERE program_id = %d) OR habit_id IN (SELECT id FROM {$db->habits} WHERE program_id = %d)", $program_id, $program_id));
+			$wpdb->query($wpdb->prepare("DELETE FROM {$db->milestones} WHERE program_id = %d", $program_id));
+			$wpdb->query($wpdb->prepare("DELETE FROM {$db->habits} WHERE program_id = %d", $program_id));
+			$wpdb->query($wpdb->prepare("DELETE FROM {$db->groups} WHERE program_id = %d", $program_id));
+			$wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}posts WHERE ID = %d", $program_id));
 
-			\WP_CLI::success( 'Program and associated records have been deleted.' );
+			\WP_CLI::success('Program and associated records have been deleted.');
 		} else {
 			// Confirm before deleting all records related to programs
-			\WP_CLI::confirm( 'This will delete all programs and their associated records. Are you sure you want to proceed?' );
+			\WP_CLI::confirm('This will delete all programs and their associated records. Are you sure you want to proceed?');
 
 			// Delete all records related to programs
-			$wpdb->query( $wpdb->prepare( "TRUNCATE TABLE {$db->checkins};" ) );
-			$wpdb->query( $wpdb->prepare( "TRUNCATE TABLE {$db->milestones};" ) );
-			$wpdb->query( $wpdb->prepare( "TRUNCATE TABLE {$db->habits};" ) );
-			$wpdb->query( $wpdb->prepare( "TRUNCATE TABLE {$db->groups};" ) );
+			$wpdb->query($wpdb->prepare("TRUNCATE TABLE {$db->checkins};"));
+			$wpdb->query($wpdb->prepare("TRUNCATE TABLE {$db->milestones};"));
+			$wpdb->query($wpdb->prepare("TRUNCATE TABLE {$db->habits};"));
+			$wpdb->query($wpdb->prepare("TRUNCATE TABLE {$db->groups};"));
 
-			$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->prefix}posts WHERE post_type = %s;", models\Program::CPT ) );
+			$wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}posts WHERE post_type = %s;", models\Program::CPT));
 
-			\WP_CLI::success( 'All programs and associated records have been deleted.' );
+			\WP_CLI::success('All programs and associated records have been deleted.');
 		}
 	}
 
 
 	/**
 	 * Seed program titles as new posts.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--programs=<number>]
+	 * : Number of programs to create (1-7). Default: random between 1-7.
+	 *
+	 * [--assign-memberships]
+	 * : Automatically assign created programs to random memberships.
+	 *
+	 * [--memberships-per-program=<number>]
+	 * : Number of random memberships to assign per program. Default: 1-3 (random).
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     # Seed 3 programs
+	 *     wp mpch seed --programs=3
+	 *
+	 *     # Seed 5 programs and assign them to random memberships
+	 *     wp mpch seed --programs=5 --assign-memberships
+	 *
+	 *     # Seed programs and assign each to 2 memberships
+	 *     wp mpch seed --programs=3 --assign-memberships --memberships-per-program=2
 	 *
 	 * @alias seed
 	 *
@@ -144,25 +172,51 @@ class Coaching {
 	 * @param array $args The command arguments.
 	 * @param array $assoc_args The command associative arguments.
 	 */
-	public function seed( $args, $assoc_args ) {
-		$json_file    = plugin_dir_url( __DIR__ ) . 'assets/coaching-programs.json'; // Adjust the filename if needed
-		$program_json = file_get_contents( $json_file );
+	public function seed($args, $assoc_args)
+	{
+		$json_file    = plugin_dir_url(__DIR__) . 'assets/coaching-programs.json'; // Adjust the filename if needed
+		$program_json = file_get_contents($json_file);
 
-		$number = isset( $assoc_args['programs'] ) ? intval( $assoc_args['programs'] ) : $this->faker->numberBetween( 1, 7 );
-		if ( $number > 7 || absint( $number ) < 1 ) {
-			\WP_CLI::error( 'Select number from 1 - 7' );
+		$number = isset($assoc_args['programs']) ? intval($assoc_args['programs']) : $this->faker->numberBetween(1, 7);
+		if ($number > 7 || absint($number) < 1) {
+			\WP_CLI::error('Select number from 1 - 7');
+		}
+
+		$assign_memberships = isset($assoc_args['assign-memberships']);
+		$memberships_per_program = isset($assoc_args['memberships-per-program'])
+			? intval($assoc_args['memberships-per-program'])
+			: $this->faker->numberBetween(1, 3);
+
+		// Get available memberships if needed
+		$available_memberships = [];
+		if ($assign_memberships) {
+			$available_memberships = get_posts([
+				'post_type' => 'membercoreproduct',
+				'post_status' => 'publish',
+				'numberposts' => -1,
+				'fields' => 'ids'
+			]);
+
+			if (empty($available_memberships)) {
+				\WP_CLI::warning('No memberships found. Programs will be created but not assigned to any memberships.');
+				$assign_memberships = false;
+			} else {
+				\WP_CLI::line(sprintf('Found %d membership(s) to assign programs to.', count($available_memberships)));
+			}
 		}
 
 		// Use Collect to create a Collection from the JSON
-		$programs = Collection::make( json_decode( $program_json, true ) );
+		$programs = Collection::make(json_decode($program_json, true));
 
-		if ( $programs->isEmpty() ) {
-			\WP_CLI::error( 'No valid programs found in the JSON.' );
+		if ($programs->isEmpty()) {
+			\WP_CLI::error('No valid programs found in the JSON.');
 		}
 
+		$created_program_ids = [];
+
 		// Use Collect's each method for iteration
-		$programs->random( $number )->each(
-			function ( $program ) {
+		$programs->random($number)->each(
+			function ($program) use (&$created_program_ids) {
 
 				// Adjust the post type and any other parameters as needed
 				$post_id = wp_insert_post(
@@ -174,7 +228,7 @@ class Coaching {
 				);
 
 				// Add Milestones
-				foreach ( $program['milestones'] as $data ) {
+				foreach ($program['milestones'] as $data) {
 					$milestone                 = new models\Milestone();
 					$milestone->uuid           = $this->faker->uuid();
 					$milestone->program_id     = $post_id;
@@ -187,7 +241,7 @@ class Coaching {
 				}
 
 				// Add Habits
-				foreach ( $program['habits'] as $data ) {
+				foreach ($program['habits'] as $data) {
 					$habit                  = new models\Habit();
 					$habit->uuid            = $this->faker->uuid();
 					$habit->program_id      = $post_id;
@@ -202,9 +256,9 @@ class Coaching {
 				}
 
 				// Add Groups
-				foreach ( $program['groups'] as $data ) {
+				foreach ($program['groups'] as $data) {
 					$group                       = new models\Group();
-					$group->coach_id             = $this->get_or_create_coach_id( $this->faker->randomNumber( 3, false ) );
+					$group->coach_id             = $this->get_or_create_coach_id($this->faker->randomNumber(3, false));
 					$group->program_id           = $post_id;
 					$group->title                = $data['title'];
 					$group->type                 = $data['type'];
@@ -216,13 +270,26 @@ class Coaching {
 					$group->store();
 				}
 
-				if ( $post_id ) {
-					\WP_CLI::success( "Program". $program['program_title']." inserted with ID: $post_id" );
+				if ($post_id) {
+					$created_program_ids[] = $post_id;
+					\WP_CLI::success("Program '" . $program['program_title'] . "' inserted with ID: $post_id");
 				} else {
-					\WP_CLI::warning( "Failed to insert program ". $program['program_title'] );
+					\WP_CLI::warning("Failed to insert program '" . $program['program_title'] . "'");
 				}
 			}
 		);
+
+		// Assign programs to memberships if requested
+		if ($assign_memberships && !empty($created_program_ids) && !empty($available_memberships)) {
+			\WP_CLI::line('');
+			\WP_CLI::line('Assigning programs to memberships...');
+
+			$this->assign_programs_to_memberships(
+				$created_program_ids,
+				$available_memberships,
+				$memberships_per_program
+			);
+		}
 	}
 
 	/**
@@ -235,7 +302,8 @@ class Coaching {
 	 * @param array $args The command arguments.
 	 * @param array $assoc_args The command associative arguments.
 	 */
-	public function toggle_rl( $args, $assoc_args ) {
+	public function toggle_rl($args, $assoc_args)
+	{
 		$options = \MecoOptions::fetch();
 		$options->rl_enable_coaching_template = !$options->rl_enable_coaching_template;
 		$options->store(false);
@@ -255,9 +323,10 @@ class Coaching {
 	 * @alias sync-enrollments
 	 * @when after_wp_load
 	 */
-	public function sync_enrollments( $args, $assoc_args ) {
-		$dry_run = isset( $assoc_args['dry-run'] );
-		$membership_id = isset( $assoc_args['membership'] ) ? intval( $assoc_args['membership'] ) : null;
+	public function sync_enrollments($args, $assoc_args)
+	{
+		$dry_run = isset($assoc_args['dry-run']);
+		$membership_id = isset($assoc_args['membership']) ? intval($assoc_args['membership']) : null;
 
 		global $wpdb;
 		$meco_db = \MecoDb::fetch();
@@ -275,73 +344,73 @@ class Coaching {
 			'posts_per_page' => -1,
 		];
 
-		if ( $membership_id ) {
+		if ($membership_id) {
 			$query_args['p'] = $membership_id;
 		}
 
-		$products = get_posts( $query_args );
+		$products = get_posts($query_args);
 
-		if ( empty( $products ) ) {
-			\WP_CLI::error( "No memberships with assigned programs found." );
+		if (empty($products)) {
+			\WP_CLI::error("No memberships with assigned programs found.");
 		}
 
-		foreach ( $products as $product ) {
-			$assigned_programs_raw = get_post_meta( $product->ID, models\Program::PRODUCT_META, true );
-			if ( empty( $assigned_programs_raw ) ) {
+		foreach ($products as $product) {
+			$assigned_programs_raw = get_post_meta($product->ID, models\Program::PRODUCT_META, true);
+			if (empty($assigned_programs_raw)) {
 				continue;
 			}
 
-			$assigned_programs = Collection::make( maybe_unserialize( $assigned_programs_raw ) );
+			$assigned_programs = Collection::make(maybe_unserialize($assigned_programs_raw));
 
-			if ( $assigned_programs->isEmpty() ) {
+			if ($assigned_programs->isEmpty()) {
 				continue;
 			}
 
-			\WP_CLI::log( "Processing membership: {$product->post_title} (ID: {$product->ID})" );
+			\WP_CLI::log("Processing membership: {$product->post_title} (ID: {$product->ID})");
 
 			// 2. Find all users with active transactions for this membership
-			$transactions = $wpdb->get_results( $wpdb->prepare(
+			$transactions = $wpdb->get_results($wpdb->prepare(
 				"SELECT * FROM {$meco_db->transactions} WHERE product_id = %d AND status IN ('complete', 'confirmed') AND (expires_at >= %s OR expires_at = '0000-00-00 00:00:00')",
 				$product->ID,
-				current_time( 'mysql' )
-			) );
+				current_time('mysql')
+			));
 
-			if ( empty( $transactions ) ) {
-				\WP_CLI::log( "  No active transactions found for this membership." );
+			if (empty($transactions)) {
+				\WP_CLI::log("  No active transactions found for this membership.");
 				continue;
 			}
 
-			\WP_CLI::log( "  Found " . count( $transactions ) . " active transactions." );
+			\WP_CLI::log("  Found " . count($transactions) . " active transactions.");
 
 			// 3. For each transaction, ensure the user is enrolled in all assigned programs
-			foreach ( $transactions as $txn ) {
-				$assigned_programs->each( function ( $item ) use ( $txn, $product, $dry_run ) {
-					if ( ! isset( $item['program_id'] ) ) {
+			foreach ($transactions as $txn) {
+				$assigned_programs->each(function ($item) use ($txn, $product, $dry_run) {
+					if (! isset($item['program_id'])) {
 						return;
 					}
 
-					$program = new models\Program( $item['program_id'] );
-					
+					$program = new models\Program($item['program_id']);
+
 					// Check if user is already enrolled in this program
-					$existing_enrollment = models\Enrollment::get_one( [ 
+					$existing_enrollment = models\Enrollment::get_one([
 						'student_id' => $txn->user_id,
 						'program_id' => $program->id
-					] );
+					]);
 
-					if ( $existing_enrollment ) {
+					if ($existing_enrollment) {
 						return; // Already enrolled
 					}
 
-					if ( $dry_run ) {
-						\WP_CLI::log( "  [DRY RUN] Would enroll user {$txn->user_id} in program {$program->title}" );
+					if ($dry_run) {
+						\WP_CLI::log("  [DRY RUN] Would enroll user {$txn->user_id} in program {$program->title}");
 						return;
 					}
 
 					// Find next available group
-					$group = $program->next_available_group( $program->groups(), $txn->user_id );
+					$group = $program->next_available_group($program->groups(), $txn->user_id);
 
-					if ( ! $group ) {
-						\WP_CLI::warning( "  No available group for program {$program->title} (User ID: {$txn->user_id})" );
+					if (! $group) {
+						\WP_CLI::warning("  No available group for program {$program->title} (User ID: {$txn->user_id})");
 						return;
 					}
 
@@ -351,19 +420,61 @@ class Coaching {
 					$enrollment->start_date = $group->get_start_date();
 					$enrollment->program_id = $group->program_id;
 					$enrollment->txn_id     = $txn->id;
-					$enrollment->created_at = lib\Utils::ts_to_mysql_date( time() );
+					$enrollment->created_at = lib\Utils::ts_to_mysql_date(time());
 					$enrollment->features   = 'messaging';
 					$enrollment_id          = $enrollment->store();
 
-					if ( is_wp_error( $enrollment_id ) ) {
-						\WP_CLI::error( "  Failed to enroll user {$txn->user_id} in program {$program->title}: " . $enrollment_id->get_error_message() );
+					if (is_wp_error($enrollment_id)) {
+						\WP_CLI::error("  Failed to enroll user {$txn->user_id} in program {$program->title}: " . $enrollment_id->get_error_message());
 					} else {
-						\WP_CLI::success( "  Enrolled user {$txn->user_id} in program {$program->title} (Group ID: {$group->id})" );
-						lib\Utils::send_program_started_notice( $program, $product, $enrollment );
+						\WP_CLI::success("  Enrolled user {$txn->user_id} in program {$program->title} (Group ID: {$group->id})");
+						lib\Utils::send_program_started_notice($program, $product, $enrollment);
 					}
-				} );
+				});
 			}
 		}
+	}
+
+	/**
+	 * Assign programs to random memberships
+	 * 
+	 * ## OPTIONS
+	 * 
+	 * [--programs=<number>]
+	 * : Number of programs to create (1-7). Default: random between 1-7.
+	 * 
+	 *
+	 * @param array $program_ids Array of program IDs to assign.
+	 * @param array $membership_ids Array of available membership IDs.
+	 * @param int $memberships_per_program Number of memberships to assign per program.
+	 */
+	private function assign_programs_to_memberships($program_ids, $membership_ids, $memberships_per_program)
+	{
+		foreach ($program_ids as $program_id) {
+			// Get random memberships for this program
+			$selected_count = min($memberships_per_program, count($membership_ids));
+			$selected_memberships = (array) array_rand(array_flip($membership_ids), $selected_count);
+
+			foreach ($selected_memberships as $membership_id) {
+				// Get existing programs for this membership
+				$existing_programs = get_post_meta($membership_id, '_mpch_programs', true);
+				if (! is_array($existing_programs)) {
+					$existing_programs = [];
+				}
+
+				// Add program if not already assigned
+				if (! in_array($program_id, $existing_programs)) {
+					$existing_programs[] = $program_id;
+					update_post_meta($membership_id, '_mpch_programs', $existing_programs);
+
+					$membership = get_post($membership_id);
+					$program = get_post($program_id);
+					\WP_CLI::log("  ✓ Assigned '{$program->post_title}' to membership '{$membership->post_title}' (ID: {$membership_id})");
+				}
+			}
+		}
+
+		\WP_CLI::success(sprintf('Assigned %d program(s) to memberships.', count($program_ids)));
 	}
 
 	/**
@@ -373,12 +484,13 @@ class Coaching {
 	 *
 	 * @return int Coach ID
 	 */
-	private function get_or_create_coach_id( $coach_id = 0 ) {
+	private function get_or_create_coach_id($coach_id = 0)
+	{
 		// Check if coach with this email exists
-		$coach = new models\Coach( $coach_id );
+		$coach = new models\Coach($coach_id);
 
 		// If coach doesn't exist, create a new user and assign the Coach role
-		if ( ! $coach->ID ) {
+		if (! $coach->ID) {
 			$user_id = wp_insert_user(
 				[
 					'user_login' => $this->faker->userName(),
