@@ -157,13 +157,13 @@ class Coaching
 	 * ## EXAMPLES
 	 *
 	 *     # Seed 3 programs
-	 *     wp mpch seed --programs=3
+	 *     wp mcch seed --programs=3
 	 *
 	 *     # Seed 5 programs and assign them to random memberships
-	 *     wp mpch seed --programs=5 --assign-memberships
+	 *     wp mcch seed --programs=5 --assign-memberships
 	 *
 	 *     # Seed programs and assign each to 2 memberships
-	 *     wp mpch seed --programs=3 --assign-memberships --memberships-per-program=2
+	 *     wp mcch seed --programs=3 --assign-memberships --memberships-per-program=2
 	 *
 	 * @alias seed
 	 *
@@ -174,7 +174,7 @@ class Coaching
 	 */
 	public function seed($args, $assoc_args)
 	{
-		$json_file    = plugin_dir_url(__DIR__) . 'assets/coaching-programs.json'; // Adjust the filename if needed
+		$json_file    = plugin_dir_path(__DIR__) . 'assets/coaching-programs.json'; // Adjust the filename if needed
 		$program_json = file_get_contents($json_file);
 
 		$number = isset($assoc_args['programs']) ? intval($assoc_args['programs']) : $this->faker->numberBetween(1, 7);
@@ -248,9 +248,8 @@ class Coaching
 					$habit->title           = $data['title'];
 					$habit->timing          = $data['timing'];
 					$habit->repeat_length   = $data['repeat_length'];
-					$habit->repeat_unit     = $data['repeat_unit'];
-					$habit->repeat_interval = $data['repeat_interval'];
-					$habit->repeat_days     = $data['repeat_days'];
+					$habit->repeat_interval = $data['repeat_interval'] ?? null;
+					$habit->repeat_days     = $data['repeat_days'] ?? null;
 					$habit->enable_checkin  = false;
 					$habit->store();
 				}
@@ -263,9 +262,14 @@ class Coaching
 					$group->title                = $data['title'];
 					$group->type                 = $data['type'];
 					$group->allow_enrollment_cap = $data['allow_enrollment_cap'];
-					$group->enrollment_cap       = $data['enrollment_cap'];
-					$group->start_date           = $data['start_date'];
-					$group->end_date             = $data['end_date'];
+					$group->enrollment_cap       = $data['enrollment_cap'] ?? null;
+					// Only set start_date and end_date if they exist in the data
+					if (isset($data['start_date'])) {
+						$group->start_date = $data['start_date'];
+					}
+					if (isset($data['end_date'])) {
+						$group->end_date = $data['end_date'];
+					}
 					$group->status               = $data['status'];
 					$group->store();
 				}
@@ -457,15 +461,15 @@ class Coaching
 
 			foreach ($selected_memberships as $membership_id) {
 				// Get existing programs for this membership
-				$existing_programs = get_post_meta($membership_id, '_mpch_programs', true);
+				$existing_programs = maybe_unserialize(get_post_meta($membership_id, '_mcch-programs', true));
 				if (! is_array($existing_programs)) {
 					$existing_programs = [];
 				}
 
 				// Add program if not already assigned
 				if (! in_array($program_id, $existing_programs)) {
-					$existing_programs[] = $program_id;
-					update_post_meta($membership_id, '_mpch_programs', $existing_programs);
+					$existing_programs[] = ['program_id' => $program_id];
+					update_post_meta($membership_id, '_mcch-programs', maybe_serialize($existing_programs));
 
 					$membership = get_post($membership_id);
 					$program = get_post($program_id);
@@ -494,6 +498,7 @@ class Coaching
 			$user_id = wp_insert_user(
 				[
 					'user_login' => $this->faker->userName(),
+					'user_pass'  => wp_generate_password(12, false),
 					'first_name' => $this->faker->firstName(),
 					'last_name'  => $this->faker->lastName(),
 					'user_email' => $this->faker->email(),

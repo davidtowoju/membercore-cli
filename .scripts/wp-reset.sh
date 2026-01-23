@@ -27,7 +27,7 @@ ADMIN_EMAIL="${ADMIN_EMAIL:-admin@example.test}"
 FIRST_NAME="${FIRST_NAME:-Deji}"
 LAST_NAME="${LAST_NAME:-Towoju}"
 
-PLUGINS_DEFAULT="spatie-ray user-switching code-snippets membercore membercore-cli membercore-directory"
+PLUGINS_DEFAULT="metabase-post-user-meta-editor spatie-ray user-switching code-snippets membercore membercore-cli membercore-directory"
 PLUGINS="${PLUGINS:-$PLUGINS_DEFAULT}"
 
 MEMBERSHIPS="${MEMBERSHIPS:-9,10,11,12}"
@@ -42,6 +42,7 @@ SKIP_SNIPPET="${SKIP_SNIPPET:-0}"
 SKIP_PRODUCTS="${SKIP_PRODUCTS:-0}"
 SKIP_USERS="${SKIP_USERS:-0}"
 SKIP_STRIPE="${SKIP_STRIPE:-0}"
+SKIP_CONNECT_COACHKIT="${SKIP_CONNECT_COACHKIT:-0}"
 
 log "Using site: $SITE_TITLE ($SITE_URL)"
 
@@ -114,32 +115,21 @@ if [ "$SKIP_PRODUCTS" -eq 0 ]; then
   wp post create --post_type=membercoreproduct \
     --post_title="Basic Membership – Monthly" \
     --post_status=publish \
-    --meta_input='{
-      "_meco_product_price":"9.00",
-      "_meco_product_period_type":"months",
-      "_meco_product_period":"1",
-    }'
+    --meta_input='{"_meco_product_price":"9.00","_meco_product_period_type":"months","_meco_product_period":"1"}'
 
   wp post create --post_type=membercoreproduct \
     --post_title="Pro Membership – Yearly" \
     --post_status=publish \
-    --meta_input='{
-      "_meco_product_price":"99.00",
-      "_meco_product_period_type":"years",
-      "_meco_product_period":"1",
-    }'
+    --meta_input='{"_meco_product_price":"99.00","_meco_product_period_type":"years","_meco_product_period":"1"}'
 
   wp post create --post_type=membercoreproduct \
     --post_title="Elite Membership – Monthly" \
     --post_status=publish \
-    --meta_input='{
-      "_meco_product_price":"19.00",
-      "_meco_product_period_type":"months",
-      "_meco_product_period":"1",
-    }'
+    --meta_input='{"_meco_product_price":"19.00","_meco_product_period_type":"months","_meco_product_period":"1"}'
 else
   log "Products skipped"
 fi
+
 
 # Users (optional)
 if [ "$SKIP_USERS" -eq 0 ]; then
@@ -161,6 +151,16 @@ if [ "$SKIP_STRIPE" -eq 0 ]; then
   optional "Stripe setup failed" wp meco stripe-setup
 else
   log "Stripe setup skipped"
+fi
+
+# Connect/CoachKit setup (optional)
+if [ "$SKIP_CONNECT_COACHKIT" -eq 0 ]; then
+  log "Setting up Connect/CoachKit"
+  wp plugin activate membercore-connect
+  # wp mcch seed --programs=3 --assign-memberships --memberships-per-program=2
+  # wp mcch sync-enrollments
+else
+  log "Connect/CoachKit setup skipped"
 fi
 
 log "Done"
