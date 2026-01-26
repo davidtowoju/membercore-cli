@@ -511,4 +511,152 @@ class Coaching
 
 		return $coach->ID; // Return the existing coach's ID
 	}
+
+	/**
+	 * Backup CoachKit messaging data (rooms, messages, attachments)
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--file=<file>]
+	 * : Backup file path. Defaults to wp-content/uploads/coachkit-messages-backup.json
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp membercore coaching backup_messages
+	 *     wp membercore coaching backup_messages --file=/path/to/backup.json
+	 *
+	 * @when after_wp_load
+	 *
+	 * @param array $args The command arguments.
+	 * @param array $assoc_args The command associative arguments.
+	 */
+	public function backup_messages($args, $assoc_args)
+	{
+		global $wpdb;
+		$db = \membercore\coachkit\lib\Db::fetch();
+
+		// Default backup file location
+		$upload_dir = wp_upload_dir();
+		$default_file = $upload_dir['basedir'] . '/coachkit-messages-backup.json';
+		$backup_file = isset($assoc_args['file']) ? $assoc_args['file'] : $default_file;
+
+		\WP_CLI::log('Starting backup of CoachKit messaging data...');
+
+		// Get all data
+		$data = [
+			'timestamp' => current_time('mysql'),
+			'rooms' => $wpdb->get_results("SELECT * FROM {$db->rooms}", ARRAY_A),
+			'room_participants' => $wpdb->get_results("SELECT * FROM {$db->room_participants}", ARRAY_A),
+			'messages' => $wpdb->get_results("SELECT * FROM {$db->messages}", ARRAY_A),
+			'message_attachments' => $wpdb->get_results("SELECT * FROM {$db->message_attachments}", ARRAY_A),
+		];
+
+		// Save to file
+		$json = wp_json_encode($data, JSON_PRETTY_PRINT);
+		file_put_contents($backup_file, $json);
+
+		\WP_CLI::success(sprintf(
+			'Backed up %d rooms, %d participants, %d messages, %d attachments to: %s',
+			count($data['rooms']),
+			count($data['room_participants']),
+			count($data['messages']),
+			count($data['message_attachments']),
+			$backup_file
+		));
+	}
+
+	/**
+	 * Restore CoachKit messaging data from backup
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--file=<file>]
+	 * : Backup file path. Defaults to wp-content/uploads/coachkit-messages-backup.json
+	 *
+	 * [--truncate]
+	 * : Truncate existing data before restoring
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp membercore coaching restore_messages
+	 *     wp membercore coaching restore_messages --truncate
+	 *     wp membercore coaching restore_messages --file=/path/to/backup.json --truncate
+	 *
+	 * @when after_wp_load
+	 *
+	 * @param array $args The command arguments.
+	 * @param array $assoc_args The command associative arguments.
+	 */
+	public function restore_messages($args, $assoc_args)
+	{
+		global $wpdb;
+		$db = \membercore\coachkit\lib\Db::fetch();
+
+		// Default backup file location
+		$upload_dir = wp_upload_dir();
+		$default_file = $upload_dir['basedir'] . '/coachkit-messages-backup.json';
+		$backup_file = isset($assoc_args['file']) ? $assoc_args['file'] : $default_file;
+
+		// Check if file exists
+		if (!file_exists($backup_file)) {
+			\WP_CLI::error("Backup file not found: {$backup_file}");
+			return;
+		}
+
+		\WP_CLI::log("Reading backup from: {$backup_file}");
+
+		// Read backup file
+		$json = file_get_contents($backup_file);
+		$data = json_decode($json, true);
+
+		if (!$data) {
+			\WP_CLI::error('Failed to parse backup file');
+			return;
+		}
+
+		\WP_CLI::log(sprintf(
+			'Backup contains: %d rooms, %d participants, %d messages, %d attachments',
+			count($data['rooms']),
+			count($data['room_participants']),
+			count($data['messages']),
+			count($data['message_attachments'])
+		));
+
+		// Truncate if requested
+		if (isset($assoc_args['truncate'])) {
+			\WP_CLI::confirm('This will delete all existing CoachKit messaging data. Continue?');
+			\WP_CLI::log('Truncating existing data...');
+			$wpdb->query("TRUNCATE TABLE {$db->message_attachments}");
+			$wpdb->query("TRUNCATE TABLE {$db->messages}");
+			$wpdb->query("TRUNCATE TABLE {$db->room_participants}");
+			$wpdb->query("TRUNCATE TABLE {$db->rooms}");
+			\WP_CLI::success('Existing data truncated');
+		}
+
+		// Restore rooms
+		\WP_CLI::log('Restoring rooms...');
+		foreach ($data['rooms'] as $room) {
+			$wpdb->insert($db->rooms, $room);
+		}
+
+		// Restore room participants
+		\WP_CLI::log('Restoring room participants...');
+		foreach ($data['room_participants'] as $participant) {
+			$wpdb->insert($db->room_participants, $participant);
+		}
+
+		// Restore messages
+		\WP_CLI::log('Restoring messages...');
+		foreach ($data['messages'] as $message) {
+			$wpdb->insert($db->messages, $message);
+		}
+
+		// Restore message attachments
+		\WP_CLI::log('Restoring message attachments...');
+		foreach ($data['message_attachments'] as $attachment) {
+			$wpdb->insert($db->message_attachments, $attachment);
+		}
+
+		\WP_CLI::success('CoachKit messaging data restored successfully!');
+	}
 }
