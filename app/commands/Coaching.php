@@ -522,8 +522,8 @@ class Coaching
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp membercore coaching backup_messages
-	 *     wp membercore coaching backup_messages --file=/path/to/backup.json
+	 *     wp mcch backup_messages
+	 *     wp mcch backup_messages --file=/path/to/backup.json
 	 *
 	 * @when after_wp_load
 	 *
@@ -571,16 +571,21 @@ class Coaching
 	 * ## OPTIONS
 	 *
 	 * [--file=<file>]
-	 * : Backup file path. Defaults to wp-content/uploads/coachkit-messages-backup.json
+	 * : Backup file path. Defaults to plugin's assets folder, then wp-content/uploads
 	 *
 	 * [--truncate]
 	 * : Truncate existing data before restoring
 	 *
 	 * ## EXAMPLES
 	 *
-	 *     wp membercore coaching restore_messages
-	 *     wp membercore coaching restore_messages --truncate
-	 *     wp membercore coaching restore_messages --file=/path/to/backup.json --truncate
+	 *     # Restore from default location (checks plugin assets first)
+	 *     wp mcch restore_messages
+	 *
+	 *     # Restore with truncation
+	 *     wp mcch restore_messages --truncate
+	 *
+	 *     # Restore from custom file
+	 *     wp mcch restore_messages --file=/path/to/backup.json --truncate
 	 *
 	 * @when after_wp_load
 	 *
@@ -592,10 +597,17 @@ class Coaching
 		global $wpdb;
 		$db = \membercore\coachkit\lib\Db::fetch();
 
-		// Default backup file location
-		$upload_dir = wp_upload_dir();
-		$default_file = $upload_dir['basedir'] . '/coachkit-messages-backup.json';
-		$backup_file = isset($assoc_args['file']) ? $assoc_args['file'] : $default_file;
+		// Default backup file location - check plugin assets first, then uploads
+		if (isset($assoc_args['file'])) {
+			$backup_file = $assoc_args['file'];
+		} else {
+			$plugin_file = plugin_dir_path(__DIR__) . 'assets/coachkit-messages-backup.json';
+			$upload_dir = wp_upload_dir();
+			$uploads_file = $upload_dir['basedir'] . '/coachkit-messages-backup.json';
+			
+			// Use plugin file if it exists, otherwise fall back to uploads
+			$backup_file = file_exists($plugin_file) ? $plugin_file : $uploads_file;
+		}
 
 		// Check if file exists
 		if (!file_exists($backup_file)) {

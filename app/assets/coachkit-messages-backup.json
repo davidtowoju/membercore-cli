@@ -1,0 +1,177 @@
+{
+    "timestamp": "2026-01-23 17:42:43",
+    "rooms": [
+        {
+            "id": "1",
+            "group_id": "0",
+            "uuid": "00b3a39e01a6451d81b6606863039f58",
+            "type": "one_to_one",
+            "created_at": "2026-01-23 10:26:16"
+        },
+        {
+            "id": "2",
+            "group_id": "6",
+            "uuid": "0f1e4ca10dae490b8e0c7892f1fb76ef",
+            "type": "group",
+            "created_at": "2026-01-23 10:33:28"
+        }
+    ],
+    "room_participants": [
+        {
+            "id": "1",
+            "room_id": "1",
+            "user_id": "12",
+            "created_at": "2026-01-23 10:26:16"
+        },
+        {
+            "id": "2",
+            "room_id": "1",
+            "user_id": "27",
+            "created_at": "2026-01-23 10:26:16"
+        },
+        {
+            "id": "3",
+            "room_id": "2",
+            "user_id": "12",
+            "created_at": "2026-01-23 10:33:28"
+        },
+        {
+            "id": "4",
+            "room_id": "2",
+            "user_id": "2",
+            "created_at": "2026-01-23 10:33:28"
+        },
+        {
+            "id": "5",
+            "room_id": "2",
+            "user_id": "6",
+            "created_at": "2026-01-23 10:33:28"
+        },
+        {
+            "id": "6",
+            "room_id": "2",
+            "user_id": "21",
+            "created_at": "2026-01-23 10:33:28"
+        },
+        {
+            "id": "7",
+            "room_id": "2",
+            "user_id": "27",
+            "created_at": "2026-01-23 10:33:28"
+        }
+    ],
+    "messages": [
+        {
+            "id": "1",
+            "room_id": "1",
+            "sender_id": "27",
+            "message": "Hello Genevieve. How are you catching up with your program?",
+            "created_at": "2026-01-23 10:26:38"
+        },
+        {
+            "id": "2",
+            "room_id": "1",
+            "sender_id": "12",
+            "message": "Hi Coach, it's going really well. Thank you",
+            "created_at": "2026-01-23 10:28:24"
+        },
+        {
+            "id": "3",
+            "room_id": "1",
+            "sender_id": "27",
+            "message": "I was hoping you could draw this bus as your next assignment.",
+            "created_at": "2026-01-23 10:31:26"
+        },
+        {
+            "id": "4",
+            "room_id": "1",
+            "sender_id": "12",
+            "message": "Oh okay, it looks great. Do you want me to use AI? Also is it going to be B&amp;W or colored",
+            "created_at": "2026-01-23 10:32:16"
+        },
+        {
+            "id": "5",
+            "room_id": "1",
+            "sender_id": "27",
+            "message": "As per the program policy, no AI allowed. Also, pencil or charcoal is fine, you may add colours if you like. Just make it look good.",
+            "created_at": "2026-01-23 10:33:11"
+        },
+        {
+            "id": "6",
+            "room_id": "2",
+            "sender_id": "27",
+            "message": "Hi everyone",
+            "created_at": "2026-01-23 10:33:34"
+        },
+        {
+            "id": "7",
+            "room_id": "2",
+            "sender_id": "6",
+            "message": "Hi Coach Mallie, happy to be taking this creative thinking program. It's been my life goal to be the solution to multiple problems in my society.",
+            "created_at": "2026-01-23 10:38:15"
+        },
+        {
+            "id": "8",
+            "room_id": "2",
+            "sender_id": "12",
+            "message": "Hi Coach Mallie, I am also excited to be here as well and happy to be among great thinkers like Aysha as co-students. Hoping to learn from you all.",
+            "created_at": "2026-01-23 10:39:50"
+        },
+        {
+            "id": "9",
+            "room_id": "2",
+            "sender_id": "27",
+            "message": "Great, good to have you all as my students too. Looking forward to program completion",
+            "created_at": "2026-01-23 10:40:33"
+        },
+        {
+            "id": "10",
+            "room_id": "1",
+            "sender_id": "27",
+            "message": "Omode yi",
+            "created_at": "2026-01-23 17:23:18"
+        }
+    ],
+    "message_attachments": [
+        {
+            "id": "1",
+            "attachment": "",
+            "path": "\/2026\/01\/lagos-bus.jpeg",
+            "url": "\/2026\/01\/lagos-bus.jpeg",
+            "type": "image\/jpeg",
+            "sender_id": "27",
+            "message_id": "3",
+            "created_at": "2026-01-23 10:31:01"
+        },
+        {
+            "id": "2",
+            "attachment": "",
+            "path": "\/2026\/01\/pexels-cottonbro-5989928.jpg",
+            "url": "\/2026\/01\/pexels-cottonbro-5989928.jpg",
+            "type": "image\/jpeg",
+            "sender_id": "27",
+            "message_id": "10",
+            "created_at": "2026-01-23 17:23:10"
+        },
+        {
+            "id": "3",
+            "attachment": "",
+            "path": "\/2026\/01\/pexels-cottonbro-7805072.jpg",
+            "url": "\/2026\/01\/pexels-cottonbro-7805072.jpg",
+            "type": "image\/jpeg",
+            "sender_id": "27",
+            "message_id": "10",
+            "created_at": "2026-01-23 17:23:10"
+        },
+        {
+            "id": "4",
+            "attachment": "",
+            "path": "\/2026\/01\/licensed-image.jpeg",
+            "url": "\/2026\/01\/licensed-image.jpeg",
+            "type": "image\/jpeg",
+            "sender_id": "27",
+            "message_id": "10",
+            "created_at": "2026-01-23 17:23:12"
+        }
+    ]
+}
