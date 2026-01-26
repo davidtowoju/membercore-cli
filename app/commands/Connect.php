@@ -720,4 +720,129 @@ class Connect extends Base
             )
         );
     }
+
+    /**
+     * Migrate CoachKit messaging data to Connect
+     *
+     * Migrates rooms, participants, messages, and attachments from CoachKit tables to Connect tables.
+     * This handles the transition from CoachKit's messaging system to Connect's new architecture.
+     *
+     * ## OPTIONS
+     *
+     * [--force]
+     * : Force migration even if it has already been completed
+     *
+     * [--dry-run]
+     * : Show what would be migrated without actually performing the migration
+     *
+     * ## EXAMPLES
+     *
+     *     # Run migration (skips if already completed)
+     *     wp mccon migrate
+     *
+     *     # Force re-run migration
+     *     wp mccon migrate --force
+     *
+     *     # See what would be migrated
+     *     wp mccon migrate --dry-run
+     *
+     * @when after_wp_load
+     *
+     * @param array $args The command arguments.
+     * @param array $assoc_args The command associative arguments.
+     */
+    public function migrate($args, $assoc_args)
+    {
+        // Check if Connect plugin is active
+        if (!class_exists('membercore\\connect\\Services\\MigrationService')) {
+            \WP_CLI::error('MemberCore Connect plugin is not active.');
+            return;
+        }
+
+        $force = isset($assoc_args['force']);
+        $dryRun = isset($assoc_args['dry-run']);
+
+        try {
+            $container = \membercore\connect\Bootstrap::getContainer();
+            $migrationService = $container->get(\membercore\connect\Services\MigrationService::class);
+
+            // Check if migration already completed
+            if (!$force && $migrationService->isMigrationCompleted()) {
+                \WP_CLI::warning('Migration has already been completed. Use --force to re-run.');
+                return;
+            }
+
+            if ($dryRun) {
+                \WP_CLI::line('DRY RUN - No actual changes will be made');
+                \WP_CLI::line('');
+            }
+
+            \WP_CLI::line('Starting CoachKit to Connect migration...');
+            \WP_CLI::line('');
+
+            // Get stats before migration
+            global $wpdb;
+            $coachkitDb = class_exists('membercore\\coachkit\\lib\\Db') 
+                ? \membercore\coachkit\lib\Db::fetch() 
+                : null;
+
+            if (!$coachkitDb) {
+                \WP_CLI::error('CoachKit plugin is not active. Cannot migrate data.');
+                return;
+            }
+
+            $stats = [
+                'rooms' => $wpdb->get_var("SELECT COUNT(*) FROM {$coachkitDb->rooms}"),
+                'participants' => $wpdb->get_var("SELECT COUNT(*) FROM {$coachkitDb->room_participants}"),
+                'messages' => $wpdb->get_var("SELECT COUNT(*) FROM {$coachkitDb->messages}"),
+                'attachments' => $wpdb->get_var("SELECT COUNT(*) FROM {$coachkitDb->message_attachments}"),
+            ];
+
+            \WP_CLI::line('CoachKit data to migrate:');
+            \WP_CLI::line("  Rooms: {$stats['rooms']}");
+            \WP_CLI::line("  Participants: {$stats['participants']}");
+            \WP_CLI::line("  Messages: {$stats['messages']}");
+            \WP_CLI::line("  Attachments: {$stats['attachments']}");
+            \WP_CLI::line('');
+
+            if ($stats['rooms'] == 0) {
+                \WP_CLI::warning('No CoachKit rooms found to migrate.');
+                return;
+            }
+
+            if ($dryRun) {
+                \WP_CLI::success('DRY RUN complete. Migration would migrate the data shown above.');
+                return;
+            }
+
+            if (!$force) {
+                \WP_CLI::confirm('Continue with migration?');
+            }
+
+            // Run the migration
+            $result = $migrationService->migrateCoachKitMessages();
+
+            if ($result['success']) {
+                \WP_CLI::success('Migration completed successfully!');
+                \WP_CLI::line('');
+                \WP_CLI::line('Summary:');
+                \WP_CLI::line("  Rooms migrated: {$result['rooms_migrated']}");
+                \WP_CLI::line("  Participants migrated: {$result['participants_migrated']}");
+                \WP_CLI::line("  Messages migrated: {$result['messages_migrated']}");
+                \WP_CLI::line("  Attachments migrated: {$result['attachments_migrated']}");
+                
+                if (!empty($result['errors'])) {
+                    \WP_CLI::warning('Some errors occurred during migration:');
+                    foreach ($result['errors'] as $error) {
+                        \WP_CLI::line("  - {$error}");
+                    }
+                }
+            } else {
+                \WP_CLI::error('Migration failed: ' . ($result['error'] ?? 'Unknown error'));
+            }
+
+        } catch (\Exception $e) {
+            \WP_CLI::error('Migration error: ' . $e->getMessage());
+        }
+    }
 }
