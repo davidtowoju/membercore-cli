@@ -40,6 +40,7 @@ if (file_exists(MEMBERCORE_CLI_PLUGIN_DIR . '/vendor/autoload.php')) {
     require_once MEMBERCORE_CLI_PLUGIN_DIR . '/app/commands/Snippet.php';
     require_once MEMBERCORE_CLI_PLUGIN_DIR . '/app/commands/StripeSetup.php';
     require_once MEMBERCORE_CLI_PLUGIN_DIR . '/app/commands/Connect.php';
+    require_once MEMBERCORE_CLI_PLUGIN_DIR . '/app/commands/Circles.php';
 }
 
 // Only run if WP-CLI is available
@@ -144,6 +145,13 @@ add_action('plugins_loaded', function() {
             'namespace'  => 'membercore\\cli\\commands',
             'dependency' => 'membercore\\connect\\Models\\Room',
             'description' => 'MemberCore Connect messaging system commands',
+        ],
+        [
+            'slug'       => 'mccirc',
+            'class'      => 'Circles',
+            'namespace'  => 'membercore\\cli\\commands',
+            'dependency' => 'membercore\\circles\\models\\Circle',
+            'description' => 'MemberCore Circles management commands',
         ],
     ];
 

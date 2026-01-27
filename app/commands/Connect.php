@@ -71,7 +71,8 @@ class Connect extends Base
         $participants_per_room = isset($assoc_args['participants-per-room']) 
             ? absint($assoc_args['participants-per-room']) 
             : null;
-        $source_type = $assoc_args['source-type'] ?? 'mixed';
+        $context = $assoc_args['context'] ?? 'mixed';
+        $scope = $assoc_args['scope'] ?? 'group';
         $user_id = isset($assoc_args['user-id']) ? absint($assoc_args['user-id']) : null;
         $with_coachkit = isset($assoc_args['with-coachkit']);
 
@@ -113,21 +114,23 @@ class Connect extends Base
         $progress = \WP_CLI\Utils\make_progress_bar('Creating rooms and messages', $rooms_count);
 
         for ($i = 0; $i < $rooms_count; $i++) {
-            // Determine source type for this room
-            if ($source_type === 'mixed') {
-                $room_source_type = $this->faker->randomElement(['coachkit_group', 'circle', 'direct']);
+            // Determine context and scope for this room
+            if ($context === 'mixed') {
+                $room_context = $this->faker->randomElement(['coachkit', 'circle', 'directory']);
+                $room_scope = $room_context === 'directory' ? 'dm' : 'group';
             } else {
-                $room_source_type = $source_type;
+                $room_context = $context;
+                $room_scope = $scope;
             }
 
             // Handle CoachKit integration
-            if ($with_coachkit && $room_source_type === 'coachkit_group' && !empty($coachkit_groups)) {
+            if ($with_coachkit && $room_context === 'coachkit' && $room_scope === 'group' && !empty($coachkit_groups)) {
                 $group = $this->faker->randomElement($coachkit_groups);
                 $source_id = (int) $group['id'];
                 $display_name = $group['title']; // We have this, but MessagingService will fetch it
             } else {
                 $source_id = $this->faker->numberBetween(100, 9999);
-                $display_name = $this->generateRoomName($room_source_type);
+                $display_name = $this->generateRoomName($room_context, $room_scope);
             }
 
             // Determine participants
@@ -135,14 +138,14 @@ class Connect extends Base
                 ?? $this->faker->numberBetween(2, 5);
             
             // For CoachKit groups, get actual participants from the group
-            if ($with_coachkit && $room_source_type === 'coachkit_group' && !empty($coachkit_groups)) {
+            if ($with_coachkit && $room_context === 'coachkit' && $room_scope === 'group' && !empty($coachkit_groups)) {
                 $participant_ids = $this->getCoachKitParticipants($source_id, $num_participants, $user_id);
             } else {
                 $participant_ids = $this->getRandomParticipants($num_participants, $user_id);
             }
 
             // Create room using MessagingService (which handles display names properly)
-            $room = $this->createRoomWithService($room_source_type, $source_id, $participant_ids);
+            $room = $this->createRoomWithService($room_context, $room_scope, $source_id, $participant_ids);
             
             if (!$room) {
                 \WP_CLI::warning("Failed to create room #{$i}");
@@ -171,26 +174,27 @@ class Connect extends Base
         \WP_CLI::line("Created {$created_messages} message(s)");
         \WP_CLI::line('');
         \WP_CLI::line('View the messaging UI by:');
-        \WP_CLI::line('1. Adding [membercore_messages source_type="coachkit_group"] shortcode to a page');
-        \WP_CLI::line('2. Or calling do_action("mccon_messages_init", "coachkit_group") in your code');
+        \WP_CLI::line('1. Adding [membercore_messages context="coachkit" scope="group"] shortcode to a page');
+        \WP_CLI::line('2. Or calling do_action("mccon_messages_init", "coachkit", "group") in your code');
     }
 
     /**
      * Create a room using MessagingService (proper way that handles display names)
      *
-     * @param string $source_type Source type
+     * @param string $context Context (e.g., 'coachkit', 'circle', 'directory')
+     * @param string $scope Scope (e.g., 'group', 'dm')
      * @param int    $source_id   Source ID
      * @param array  $participant_ids Array of user IDs
      * @return int|false Room ID or false on failure
      */
-    private function createRoomWithService(string $source_type, int $source_id, array $participant_ids)
+    private function createRoomWithService(string $context, string $scope, int $source_id, array $participant_ids)
     {
         try {
             $app = \membercore\connect\app(MCCON_PLUGIN_FILE);
             $container = $app->container();
             $messagingService = $container->get(\membercore\connect\Services\MessagingService::class);
             
-            $result = $messagingService->createRoom($source_type, $source_id, $participant_ids);
+            $result = $messagingService->createRoom($context, $source_id, $participant_ids, $scope);
             
             if ($result && !empty($result['room_id'])) {
                 return (int) $result['room_id'];
@@ -217,7 +221,7 @@ class Connect extends Base
             $app = \membercore\connect\app(MCCON_PLUGIN_FILE);
             $container = $app->container();
             $registry = $container->get(\membercore\connect\Services\AdapterRegistry::class);
-            $adapter = $registry->get('coachkit_group');
+            $adapter = $registry->getByContextAndScope('coachkit', 'group');
             
             if (!$adapter) {
                 return $this->getRandomParticipants($num_participants, $specific_user_id);
@@ -337,15 +341,15 @@ class Connect extends Base
     }
 
     /**
-     * Generate a realistic room name based on source type
+     * Generate a realistic room name based on context and scope
      *
-     * @param string $source_type Source type
+     * @param string $context Context
+     * @param string $scope Scope
      * @return string Room name
      */
-    private function generateRoomName(string $source_type): string
+    private function generateRoomName(string $context, string $scope): string
     {
-        switch ($source_type) {
-            case 'coachkit_group':
+        if ($context === 'coachkit' && $scope === 'group') {
                 $prefixes = ['Elite', 'Advanced', 'Pro', 'Master', 'Premier'];
                 $topics = ['Coaching', 'Fitness', 'Nutrition', 'Mindset', 'Business', 'Leadership'];
                 $suffixes = ['Group', 'Program', 'Community', 'Circle', 'Academy'];
@@ -356,8 +360,7 @@ class Connect extends Base
                     $this->faker->randomElement($topics),
                     $this->faker->randomElement($suffixes)
                 );
-
-            case 'circle':
+        } elseif ($context === 'circle' && $scope === 'group') {
                 $adjectives = ['Private', 'Inner', 'Elite', 'Exclusive', 'VIP'];
                 $nouns = ['Circle', 'Community', 'Collective', 'Network', 'Society'];
                 
@@ -366,12 +369,10 @@ class Connect extends Base
                     $this->faker->randomElement($adjectives),
                     $this->faker->randomElement($nouns)
                 );
-
-            case 'direct':
-                return 'Direct Message';
-
-            default:
-                return $this->faker->words(3, true);
+        } elseif ($scope === 'dm') {
+            return 'Direct Message';
+        } else {
+            return $this->faker->words(3, true);
         }
     }
 
@@ -508,18 +509,29 @@ class Connect extends Base
             return;
         }
 
-        $sourceType = $assoc_args['source-type'] ?? null;
+        $context = $assoc_args['context'] ?? null;
+        $scope = $assoc_args['scope'] ?? null;
 
         global $wpdb;
         $prefix = $wpdb->prefix . 'mccon_';
 
         // Build query
-        $query = "SELECT id, source_type, source_id, display_name FROM {$prefix}rooms";
+        $query = "SELECT id, context, scope, source_id, display_name FROM {$prefix}rooms";
         $params = [];
+        $where = [];
 
-        if ($sourceType) {
-            $query .= " WHERE source_type = %s";
-            $params[] = $sourceType;
+        if ($context) {
+            $where[] = "context = %s";
+            $params[] = $context;
+        }
+        
+        if ($scope) {
+            $where[] = "scope = %s";
+            $params[] = $scope;
+        }
+        
+        if (!empty($where)) {
+            $query .= " WHERE " . implode(' AND ', $where);
         }
 
         $rooms = $wpdb->get_results(
@@ -543,7 +555,8 @@ class Connect extends Base
 
         foreach ($rooms as $room) {
             $roomId = (int) $room['id'];
-            $roomSourceType = $room['source_type'];
+            $roomContext = $room['context'];
+            $roomScope = $room['scope'];
             $sourceId = (int) $room['source_id'];
             $currentName = $room['display_name'];
 
@@ -551,10 +564,10 @@ class Connect extends Base
             try {
                 $container = \membercore\connect\Bootstrap::getContainer();
                 $registry = $container->get(\membercore\connect\Services\AdapterRegistry::class);
-                $adapter = $registry->get($roomSourceType);
+                $adapter = $registry->getByContextAndScope($roomContext, $roomScope);
 
                 if (!$adapter) {
-                    \WP_CLI::debug("No adapter for source type: {$roomSourceType}");
+                    \WP_CLI::debug("No adapter for context: {$roomContext}, scope: {$roomScope}");
                     $skipped++;
                     $progress->tick();
                     continue;
@@ -611,14 +624,17 @@ class Connect extends Base
      * [--messages-per-user=<number>]
      * : Number of messages per participant (default: 3-8 random)
      *
-     * [--source-type=<type>]
-     * : Source type for rooms to populate (default: coachkit_group)
+     * [--context=<context>]
+     * : Context for rooms to populate (default: coachkit)
+     *
+     * [--scope=<scope>]
+     * : Scope for rooms to populate (default: group)
      *
      * ## EXAMPLES
      *
      *     wp mccon populate-messages
      *     wp mccon populate-messages --messages-per-user=5
-     *     wp mccon populate-messages --source-type=coachkit_group
+     *     wp mccon populate-messages --context=coachkit --scope=group
      *
      * @when after_wp_load
      *
@@ -634,17 +650,28 @@ class Connect extends Base
         }
 
         $messagesPerUser = isset($assoc_args['messages-per-user']) ? (int) $assoc_args['messages-per-user'] : null;
-        $sourceType = $assoc_args['source-type'] ?? 'coachkit_group';
+        $context = $assoc_args['context'] ?? 'coachkit';
+        $scope = $assoc_args['scope'] ?? 'group';
 
-        // Get all rooms for the source type
-        $rooms = \membercore\connect\Models\Room::where('source_type', '=', $sourceType);
+        // Get all rooms for the context/scope
+        global $wpdb;
+        $roomsTable = $wpdb->prefix . 'mccon_rooms';
+        $roomIds = $wpdb->get_col($wpdb->prepare(
+            "SELECT id FROM {$roomsTable} WHERE context = %s AND scope = %s",
+            $context,
+            $scope
+        ));
 
-        if (empty($rooms)) {
-            \WP_CLI::error("No rooms found with source type: {$sourceType}");
+        if (empty($roomIds)) {
+            \WP_CLI::error("No rooms found with context: {$context}, scope: {$scope}");
             return;
         }
+        
+        $rooms = array_map(function($id) {
+            return \membercore\connect\Models\Room::get($id);
+        }, $roomIds);
 
-        \WP_CLI::line("Found " . count($rooms) . " rooms with source type: {$sourceType}");
+        \WP_CLI::line("Found " . count($rooms) . " rooms with context: {$context}, scope: {$scope}");
         \WP_CLI::confirm('This will delete all existing messages in these rooms and create new test messages. Continue?', $assoc_args);
 
         $progress = \WP_CLI\Utils\make_progress_bar('Processing rooms', count($rooms));
@@ -763,13 +790,21 @@ class Connect extends Base
         $dryRun = isset($assoc_args['dry-run']);
 
         try {
-            $container = \membercore\connect\Bootstrap::getContainer();
+            // Access container through Room model which has HasStaticContainer trait
+            $container = \membercore\connect\Models\Room::getContainer();
             $migrationService = $container->get(\membercore\connect\Services\MigrationService::class);
 
             // Check if migration already completed
             if (!$force && $migrationService->isMigrationCompleted()) {
                 \WP_CLI::warning('Migration has already been completed. Use --force to re-run.');
                 return;
+            }
+
+            // Reset migration status if forcing
+            if ($force && $migrationService->isMigrationCompleted()) {
+                \WP_CLI::line('Resetting migration status (--force flag detected)');
+                $migrationService->resetMigrationStatus();
+                \WP_CLI::line('');
             }
 
             if ($dryRun) {
