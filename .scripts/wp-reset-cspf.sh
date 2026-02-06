@@ -3,6 +3,9 @@ set -euo pipefail
 
 log() { printf "\n%s\n" "$1"; }
 
+# Suppress PHP warnings (e.g. missing mu-plugins like wp-fail2ban)
+export WP_CLI_PHP_ARGS="-d error_reporting=E_ERROR"
+
 # Optional runner: runs command, if it fails we continue with a message
 optional() {
   local name="$1"; shift
@@ -43,10 +46,10 @@ ADMIN_EMAIL="${ADMIN_EMAIL:-admin@example.test}"
 FIRST_NAME="${FIRST_NAME:-Deji}"
 LAST_NAME="${LAST_NAME:-Towoju}"
 
-PLUGINS_DEFAULT="metabase-post-user-meta-editor spatie-ray user-switching code-snippets membercore membercore-cli membercore-directory"
+PLUGINS_DEFAULT="wp-fail2ban metabase-post-user-meta-editor spatie-ray user-switching code-snippets membercore membercore-cli membercore-directory"
 PLUGINS="${PLUGINS:-$PLUGINS_DEFAULT}"
 
-MEMBERSHIPS="${MEMBERSHIPS:-9,10,11,12}"
+MEMBERSHIPS="${MEMBERSHIPS:-}"
 USER_COUNT="${USER_COUNT:-20}"
 MEMBERSHIP_PROBABILITY="${MEMBERSHIP_PROBABILITY:-75}"
 
@@ -120,28 +123,40 @@ else
 fi
 
 # Products (optional)
+CREATED_IDS=()
 if [ "$SKIP_PRODUCTS" -eq 0 ]; then
   log "Creating products"
 
-  wp post create --post_type=membercoreproduct \
+  CREATED_IDS+=("$(wp post create --post_type=membercoreproduct \
     --post_title="Basic Membership" \
     --post_status=publish \
-    --meta_input='{"_meco_product_price":"29.00","_meco_product_period_type":"lifetime","_meco_product_period":"1"}'
+    --meta_input='{"_meco_product_price":"29.00","_meco_product_period_type":"lifetime","_meco_product_period":"1"}' \
+    --porcelain)")
 
-  wp post create --post_type=membercoreproduct \
+  CREATED_IDS+=("$(wp post create --post_type=membercoreproduct \
     --post_title="Basic Membership – Monthly" \
     --post_status=publish \
-    --meta_input='{"_meco_product_price":"9.00","_meco_product_period_type":"months","_meco_product_period":"1"}'
+    --meta_input='{"_meco_product_price":"9.00","_meco_product_period_type":"months","_meco_product_period":"1"}' \
+    --porcelain)")
 
-  wp post create --post_type=membercoreproduct \
+  CREATED_IDS+=("$(wp post create --post_type=membercoreproduct \
     --post_title="Pro Membership – Yearly" \
     --post_status=publish \
-    --meta_input='{"_meco_product_price":"99.00","_meco_product_period_type":"years","_meco_product_period":"1"}'
+    --meta_input='{"_meco_product_price":"99.00","_meco_product_period_type":"years","_meco_product_period":"1"}' \
+    --porcelain)")
 
-  wp post create --post_type=membercoreproduct \
+  CREATED_IDS+=("$(wp post create --post_type=membercoreproduct \
     --post_title="Elite Membership – Monthly" \
     --post_status=publish \
-    --meta_input='{"_meco_product_price":"19.00","_meco_product_period_type":"months","_meco_product_period":"1"}'
+    --meta_input='{"_meco_product_price":"19.00","_meco_product_period_type":"months","_meco_product_period":"1"}' \
+    --porcelain)")
+
+  # Build comma-separated list of created IDs for user creation
+  if [ -z "$MEMBERSHIPS" ]; then
+    MEMBERSHIPS="$(IFS=,; echo "${CREATED_IDS[*]}")"
+  fi
+
+  log "Created products with IDs: $MEMBERSHIPS"
 else
   log "Products skipped"
 fi
@@ -173,7 +188,8 @@ fi
 # Connect/CoachKit setup (optional)
 if [ "$SKIP_CONNECT_COACHKIT" -eq 0 ]; then
   log "Setting up Connect/CoachKit"
-  wp plugin activate membercore-connect
+  wp plugin activate membercore-connect \
+    || log "membercore-connect plugin not found, skipping"
   # wp mcch seed --programs=3 --assign-memberships --memberships-per-program=2
   # wp mcch sync-enrollments
 else
