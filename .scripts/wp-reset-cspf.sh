@@ -40,7 +40,7 @@ SITE_TITLE="$(wp option get blogname)"
 
 # Flexible settings (override by env vars)
 ADMIN_USER="${ADMIN_USER:-admin}"
-ADMIN_PASS="${ADMIN_PASS:-pass}"
+ADMIN_PASS="${ADMIN_PASS:-!T3Mp1@T3!}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-admin@example.test}"
 
 FIRST_NAME="${FIRST_NAME:-Deji}"
@@ -188,8 +188,8 @@ fi
 # Connect/CoachKit setup (optional)
 if [ "$SKIP_CONNECT_COACHKIT" -eq 0 ]; then
   log "Setting up Connect/CoachKit"
-  wp plugin activate membercore-connect \
-    || log "membercore-connect plugin not found, skipping"
+  # wp plugin activate membercore-connect \
+    # || log "membercore-connect plugin not found, skipping"
   # wp mcch seed --programs=3 --assign-memberships --memberships-per-program=2
   # wp mcch sync-enrollments
 else
